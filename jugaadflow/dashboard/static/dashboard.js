@@ -1,9 +1,15 @@
 const MAX_POINTS = 60;
 const TIER_COLORS = {
-    1: '#4caf50',
-    2: '#2196f3',
-    3: '#ff9800',
-    4: '#f44336',
+    1: '#34d399',
+    2: '#38bdf8',
+    3: '#fb923c',
+    4: '#f87171',
+};
+const TIER_FILL = {
+    1: 'rgba(52,211,153,0.08)',
+    2: 'rgba(56,189,248,0.08)',
+    3: 'rgba(251,146,60,0.08)',
+    4: 'rgba(248,113,113,0.08)',
 };
 const LEVEL_CLASSES = ['level-0', 'level-1', 'level-2', 'level-3'];
 
@@ -11,27 +17,52 @@ let latencyChart, throughputChart, classChart;
 let currentMode = 'adaptive';
 const TIER_LABELS = ['Tier 1 (Payment/Order)', 'Tier 2 (Inventory)', 'Tier 3 (Clicks)', 'Tier 4 (Logs)'];
 
+function makeGradient(ctx, color) {
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, color.replace(')', ', 0.25)').replace('rgb', 'rgba'));
+    grad.addColorStop(1, color.replace(')', ', 0)').replace('rgb', 'rgba'));
+    return grad;
+}
+
 function initCharts() {
     const sharedOpts = {
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 200 },
+        animation: { duration: 300 },
+        interaction: { mode: 'index', intersect: false },
         scales: {
             x: { display: false },
-            y: { beginAtZero: true, ticks: { color: '#8899a6' }, grid: { color: '#2a2f36' } }
+            y: {
+                beginAtZero: true,
+                ticks: { color: '#5a7494', font: { family: 'JetBrains Mono', size: 10 } },
+                grid: { color: 'rgba(99,179,255,0.06)' },
+                border: { color: 'transparent' }
+            }
         },
-        plugins: { legend: { labels: { color: '#e7e9ea', boxWidth: 12 } } }
+        plugins: {
+            legend: { labels: { color: '#94a3b8', boxWidth: 10, font: { size: 11, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle' } },
+            tooltip: {
+                backgroundColor: 'rgba(13,20,33,0.9)',
+                titleColor: '#94a3b8',
+                bodyColor: '#e2eaf5',
+                borderColor: 'rgba(99,179,255,0.15)',
+                borderWidth: 1,
+                padding: 10,
+                bodyFont: { family: 'JetBrains Mono', size: 12 },
+            }
+        }
     };
 
-    latencyChart = new Chart(document.getElementById('latencyChart'), {
+    const latCtx = document.getElementById('latencyChart').getContext('2d');
+    latencyChart = new Chart(latCtx, {
         type: 'line',
         data: {
             labels: [],
             datasets: [
-                { label: 'Tier 1', data: [], borderColor: TIER_COLORS[1], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
-                { label: 'Tier 2', data: [], borderColor: TIER_COLORS[2], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
-                { label: 'Tier 3', data: [], borderColor: TIER_COLORS[3], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
-                { label: 'Tier 4', data: [], borderColor: TIER_COLORS[4], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
+                { label: 'Tier 1', data: [], borderColor: TIER_COLORS[1], backgroundColor: TIER_FILL[1], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, spanGaps: false },
+                { label: 'Tier 2', data: [], borderColor: TIER_COLORS[2], backgroundColor: TIER_FILL[2], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, spanGaps: false },
+                { label: 'Tier 3', data: [], borderColor: TIER_COLORS[3], backgroundColor: TIER_FILL[3], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, spanGaps: false },
+                { label: 'Tier 4', data: [], borderColor: TIER_COLORS[4], backgroundColor: TIER_FILL[4], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true, spanGaps: false },
             ]
         },
         options: sharedOpts
@@ -44,28 +75,40 @@ function initCharts() {
             datasets: [{
                 data: [0, 0, 0, 0],
                 backgroundColor: [TIER_COLORS[1], TIER_COLORS[2], TIER_COLORS[3], TIER_COLORS[4]],
-                borderWidth: 0,
+                borderWidth: 2,
+                borderColor: '#080c14',
+                hoverOffset: 6,
             }]
         },
         options: {
             responsive: true,
-            animation: { duration: 300 },
-            cutout: '55%',
+            maintainAspectRatio: false,
+            animation: { duration: 400 },
+            cutout: '62%',
             plugins: {
                 legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(13,20,33,0.9)',
+                    titleColor: '#94a3b8',
+                    bodyColor: '#e2eaf5',
+                    borderColor: 'rgba(99,179,255,0.15)',
+                    borderWidth: 1,
+                    padding: 10,
+                }
             }
         }
     });
 
-    throughputChart = new Chart(document.getElementById('throughputChart'), {
+    const tpCtx = document.getElementById('throughputChart').getContext('2d');
+    throughputChart = new Chart(tpCtx, {
         type: 'line',
         data: {
             labels: [],
             datasets: [
-                { label: 'Tier 1', data: [], borderColor: TIER_COLORS[1], borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'Tier 2', data: [], borderColor: TIER_COLORS[2], borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'Tier 3', data: [], borderColor: TIER_COLORS[3], borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'Tier 4', data: [], borderColor: TIER_COLORS[4], borderWidth: 2, pointRadius: 0, tension: 0.3 },
+                { label: 'Tier 1', data: [], borderColor: TIER_COLORS[1], backgroundColor: TIER_FILL[1], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true },
+                { label: 'Tier 2', data: [], borderColor: TIER_COLORS[2], backgroundColor: TIER_FILL[2], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true },
+                { label: 'Tier 3', data: [], borderColor: TIER_COLORS[3], backgroundColor: TIER_FILL[3], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true },
+                { label: 'Tier 4', data: [], borderColor: TIER_COLORS[4], backgroundColor: TIER_FILL[4], borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true },
             ]
         },
         options: sharedOpts
@@ -136,10 +179,10 @@ function handleMessage(data) {
     const proof = document.getElementById('proofLine');
     const paymentShed = data.counters.shed.payment || 0;
     if (paymentShed === 0) {
-        proof.textContent = 'Payments shed: 0 ✓';
+        proof.innerHTML = 'Payments shed: <strong>0</strong> &mdash; Critical events protected &check;';
         proof.className = 'proof-line';
     } else {
-        proof.textContent = 'Payments shed: ' + paymentShed + ' ✗ ALERT';
+        proof.innerHTML = 'Payments shed: <strong>' + paymentShed + '</strong> &mdash; ALERT: Critical events dropped!';
         proof.className = 'proof-line proof-fail';
     }
 
@@ -200,12 +243,92 @@ function handleMessage(data) {
     renderCounters('deferredCounters', data.counters.deferred);
     renderCounters('batchedCounters', data.counters.batched);
     renderCounters('processedCounters', data.counters.processed);
+
+    // Active spikes panel
+    if (data.active_spikes !== undefined) {
+        renderActiveSpikes(data.active_spikes);
+    }
 }
 
 function connectWS() {
     const ws = new WebSocket('ws://' + location.host + '/ws');
     ws.onmessage = (evt) => handleMessage(JSON.parse(evt.data));
     ws.onclose = () => setTimeout(connectWS, 2000);
+}
+
+// ── Admin Spike Controls ────────────────────────────────────
+const SPIKE_LABEL = {
+    payment:   'Payment',
+    order:     'Order',
+    inventory: 'Inventory',
+    click:     'Click',
+    log:       'Log',
+};
+
+async function triggerSpike(eventType) {
+    const count    = parseInt(document.getElementById('spikeBurstSize').value, 10) || 500;
+    const duration = parseFloat(document.getElementById('spikeDuration').value)    || 5;
+
+    // Immediately mark button as firing
+    const btn = document.getElementById('spikeBtn-' + eventType);
+    if (btn) {
+        btn.classList.add('firing');
+        btn.disabled = true;
+        const origText = btn.innerHTML;
+        btn.innerHTML = btn.innerHTML.replace(SPIKE_LABEL[eventType], 'Spiking...');
+
+        setTimeout(() => {
+            btn.classList.remove('firing');
+            btn.disabled = false;
+            btn.innerHTML = origText;
+        }, duration * 1000);
+    }
+
+    try {
+        const res = await fetch('/api/event-spike', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_type: eventType, count, duration_sec: duration }),
+        });
+        const data = await res.json();
+        console.log('Spike response:', data);
+    } catch (err) {
+        console.error('Spike failed:', err);
+        if (btn) { btn.classList.remove('firing'); btn.disabled = false; }
+    }
+}
+
+function renderActiveSpikes(activeSpikes) {
+    const row = document.getElementById('spikeActiveRow');
+    if (!activeSpikes || Object.keys(activeSpikes).length === 0) {
+        row.innerHTML = '';
+        // Clear all firing states from buttons
+        document.querySelectorAll('.spike-btn.firing').forEach(b => {
+            if (!b.disabled) b.classList.remove('firing');
+        });
+        return;
+    }
+
+    const now = Date.now() / 1000;
+    row.innerHTML = Object.entries(activeSpikes).map(([etype, info]) => {
+        const secsLeft = Math.max(0, Math.round(info.end_time - now));
+        const label = SPIKE_LABEL[etype] || etype;
+        return `<span class="spike-badge ${etype}">
+            <span class="spike-badge-dot"></span>
+            ${label} spike &mdash; ${info.injected.toLocaleString()} events &mdash; ${secsLeft}s left
+        </span>`;
+    }).join('');
+
+    // Mark matching buttons as firing
+    Object.keys(SPIKE_LABEL).forEach(etype => {
+        const btn = document.getElementById('spikeBtn-' + etype);
+        if (!btn) return;
+        if (activeSpikes[etype]) {
+            btn.classList.add('firing');
+        } else if (!btn.disabled) {
+            btn.classList.remove('firing');
+        }
+    });
 }
 
 const BASE_RATE = 3400;

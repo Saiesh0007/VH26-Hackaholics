@@ -71,15 +71,47 @@ def _get_public_url() -> str:
     global _ngrok_url
     if _ngrok_url:
         return _ngrok_url
+
+    # Patch pyngrok's installer to skip SSL verification (expired CDN cert workaround)
+    try:
+        import ssl
+        import urllib.request
+        from pyngrok import installer as _pyngrok_installer
+        _orig_urlretrieve = getattr(_pyngrok_installer, "_urlretrieve", None)
+        _ctx = ssl.create_default_context()
+        _ctx.check_hostname = False
+        _ctx.verify_mode = ssl.CERT_NONE
+
+        def _ssl_urlretrieve(url, path, *args, **kwargs):
+            with urllib.request.urlopen(url, context=_ctx) as response:
+                with open(path, "wb") as f:
+                    f.write(response.read())
+            return path, {}
+
+        _pyngrok_installer._urlretrieve = _ssl_urlretrieve
+    except Exception as patch_err:
+        logger.warning("Could not patch pyngrok SSL: %s", patch_err)
+
     from pyngrok import ngrok
     # Kill any stale tunnels from previous runs
-    for t in ngrok.get_tunnels():
-        ngrok.disconnect(t.public_url)
+    try:
+        for t in ngrok.get_tunnels():
+            ngrok.disconnect(t.public_url)
+    except Exception:
+        pass
+
     try:
         tunnel = ngrok.connect(8000)
-    except Exception:
-        ngrok.kill()
-        tunnel = ngrok.connect(8000)
+    except Exception as e1:
+        logger.warning("ngrok first attempt failed: %s — retrying after kill", e1)
+        try:
+            ngrok.kill()
+            tunnel = ngrok.connect(8000)
+        except Exception as e2:
+            logger.error("ngrok failed to start: %s — falling back to localhost URL", e2)
+            _ngrok_url = "http://localhost:8000"
+            return _ngrok_url
+
     url = tunnel.public_url
     if url.startswith("http://"):
         url = "https://" + url[7:]

@@ -1,6 +1,16 @@
 import asyncio
 import logging
 import os
+import sys
+
+# Load .env BEFORE any other imports so all env vars (GEMINI_API_KEY, Twilio, etc.) are available
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    load_dotenv(_env_path, override=True)
+except ImportError:
+    pass  # python-dotenv not installed; rely on system env vars
+
 import uvicorn
 
 from jugaadflow.generator.sources import ALL_SOURCES
@@ -76,13 +86,19 @@ async def main():
     else:
         logger.info("AI agents disabled (no GEMINI_API_KEY)")
 
-    print("\n  ⚡ JugaadFlow running at http://localhost:8000\n")
+    print("\n  ** JugaadFlow running at http://localhost:8000\n")
 
     await server.serve()
 
+    # Gracefully cancel all background tasks
     for t in tasks:
         t.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass  # Clean exit on Ctrl+C — no traceback needed
