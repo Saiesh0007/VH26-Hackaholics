@@ -10,3 +10,4 @@ class Strategy:
     batch_sizes: dict = field(default_factory=lambda: {"tier2": 20, "tier3": 50, "tier4": 100})
     shed_sample_rate: float = 0.1
     drain_deferred: bool = False
+    naive_mode: bool = False

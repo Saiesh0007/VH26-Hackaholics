@@ -92,6 +92,9 @@ async def feedback_loop(queues: Queues, strategy: Strategy, metrics: Metrics, in
     while True:
         await asyncio.sleep(interval)
 
+        if strategy.naive_mode:
+            continue
+
         t1_queue = queues.tier1.qsize()
         t1_latency_ms = metrics.avg_latency_ms(1) or 0.0
         lower_q = _total_lower_queue(queues)

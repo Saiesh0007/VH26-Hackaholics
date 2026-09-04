@@ -22,6 +22,10 @@ async def classify_and_route(event: Event, queues: Queues, metrics: Metrics, str
     event.priority = PRIORITY_MAP[event.type]
     metrics.record_classified(event.priority)
 
+    if strategy.naive_mode:
+        await queues.fifo.put(event)
+        return
+
     strat_key = TIER_STRATEGY_KEY.get(event.priority)
     if strat_key and getattr(strategy, strat_key) == "defer":
         deferred = queues.deferred(event.priority)

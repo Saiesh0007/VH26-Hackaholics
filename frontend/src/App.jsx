@@ -35,6 +35,10 @@ function WsProvider({ children }) {
 
 function useWs() { return useContext(WsCtx) }
 
+function toggleMode(currentNaive) {
+  fetch(currentNaive ? '/api/mode/adaptive' : '/api/mode/naive', { method: 'POST' })
+}
+
 // ─── Navigation items ─────────────────────────────────────────────────
 const navAdmin = [
   ['/admin',             'Overview',   LayoutDashboard],
@@ -228,7 +232,17 @@ function Shell({ children }) {
           <span style={{ fontFamily: 'monospace', fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.textMuted }}>
             Control Room / {loc.pathname.split('/').filter(Boolean).slice(-1)[0] || 'overview'}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.textSec }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: C.textSec }}>
+            {data && (
+              <button onClick={() => toggleMode(data.naive_mode)} style={{
+                padding: '5px 14px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+                background: data.naive_mode ? '#FEE2E2' : C.greenLight,
+                color: data.naive_mode ? '#B91C1C' : '#15803D',
+              }}>
+                {data.naive_mode ? 'NAIVE' : 'ADAPTIVE'}
+              </button>
+            )}
             <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: data ? C.green : '#EF4444', display: 'inline-block' }} />
             {data ? 'Pipeline active' : 'Connecting...'}
           </div>
@@ -279,7 +293,8 @@ function Admin() {
 
   const traffic    = Math.round(data.rate_multiplier * BASE_RATE)
   const evtSec     = sumObj(data.throughput_per_sec)
-  const queueDepth = (data.queues.tier1 || 0) + (data.queues.tier2 || 0) + (data.queues.tier3 || 0) + (data.queues.tier4 || 0)
+  const fifoDepth  = data.queues.fifo || 0
+  const queueDepth = data.naive_mode ? fifoDepth : (data.queues.tier1 || 0) + (data.queues.tier2 || 0) + (data.queues.tier3 || 0) + (data.queues.tier4 || 0)
   const critLost   = data.counters?.shed?.payment || 0
   const deferred   = sumObj(data.counters?.deferred)
   const batched    = sumObj(data.counters?.batched)
@@ -523,10 +538,13 @@ function Simulation() {
   const wsRate = data ? Math.round(data.rate_multiplier * BASE_RATE) : 3400
   const rate   = (localRate !== null && Date.now() - lastApplied.current < 3000) ? localRate : wsRate
 
+  const [flooding, setFlooding] = useState(false)
+  const [floodResult, setFloodResult] = useState(null)
+
   useEffect(() => {
     if (mode === null && data) {
       if (wsRate <= 5000)       setMode('Normal')
-      else if (wsRate <= 25000) setMode('Spike')
+      else if (wsRate <= 50000) setMode('Spike')
       else                      setMode('Stress')
     }
   }, [data, mode, wsRate])
@@ -541,9 +559,19 @@ function Simulation() {
     })
   }, [])
 
+  const triggerFlood = useCallback(async () => {
+    setFlooding(true)
+    setFloodResult(null)
+    try {
+      const res = await fetch('/api/flood', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      setFloodResult(await res.json())
+    } catch (e) { setFloodResult({ error: e.message }) }
+    setTimeout(() => setFlooding(false), 2000)
+  }, [])
+
   const currentLevel = data?.level ?? 0
-  const extreme      = rate > 15000
-  const high         = rate > 8000
+  const extreme      = rate > 150000
+  const high         = rate > 50000
 
   const decisions = [
     ['P0', 'Stream', 'Critical operations always flow — never shed'],
@@ -567,7 +595,7 @@ function Simulation() {
             {['Normal', 'Spike', 'Stress', 'Recovery'].map(x => (
               <button key={x} onClick={() => {
                 setMode(x)
-                applyRate({ Normal: 3400, Spike: 20000, Stress: 50000, Recovery: 3400 }[x])
+                applyRate({ Normal: 3400, Spike: 20000, Stress: 200000, Recovery: 3400 }[x])
               }} style={{
                 padding: '10px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', fontFamily: 'inherit',
@@ -583,9 +611,9 @@ function Simulation() {
             <span style={{ float: 'right', fontFamily: 'monospace', color: C.accent }}>{rate.toLocaleString()} / min</span>
           </label>
           <input style={{ marginTop: 20, width: '100%', accentColor: C.accent }} type="range"
-            min="1000" max="50000" step="500" value={rate} onChange={e => applyRate(+e.target.value)} />
+            min="1000" max="350000" step="1000" value={rate} onChange={e => applyRate(+e.target.value)} />
           <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted }}>
-            <span>1k</span><span>50k</span>
+            <span>1k</span><span>350k</span>
           </div>
 
           <p style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.green }}>
@@ -596,6 +624,26 @@ function Simulation() {
           <div style={{ marginTop: 20, borderRadius: 8, background: '#F7F5F0', padding: 14 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: C.textSec, margin: 0 }}>Current escalation level</p>
             <p style={{ fontSize: 18, fontWeight: 900, color: LEVEL_COLORS[currentLevel], margin: '4px 0 0' }}>{LEVEL_NAMES[currentLevel]}</p>
+          </div>
+
+          <div style={{ marginTop: 20, borderTop: `1px solid ${C.border}`, paddingTop: 16 }}>
+            <button onClick={triggerFlood} disabled={flooding} style={{
+              width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 14, fontWeight: 800,
+              cursor: flooding ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              border: `2px solid ${C.red}`, background: flooding ? '#FEE2E2' : '#fff',
+              color: C.red, opacity: flooding ? 0.7 : 1, transition: 'all 0.15s',
+            }}>
+              <Zap size={16} style={{ verticalAlign: 'middle', marginRight: 8 }} />
+              {flooding ? 'Flooding...' : 'Flash Flood'}
+            </button>
+            <p style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
+              Injects ~14k events directly into queues. Triggers EMERGENCY.
+            </p>
+            {floodResult && !floodResult.error && (
+              <div style={{ marginTop: 8, fontSize: 11, color: C.textSec, background: '#F7F5F0', padding: 10, borderRadius: 6 }}>
+                Injected: T2={floodResult.injected.tier2} T3={floodResult.injected.tier3} T4={floodResult.injected.tier4} Input={floodResult.injected.input}
+              </div>
+            )}
           </div>
         </Card>
 

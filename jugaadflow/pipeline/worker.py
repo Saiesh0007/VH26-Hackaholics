@@ -44,6 +44,14 @@ async def process_batch(queue: asyncio.Queue, batch_size: int, metrics: Metrics)
 
 async def worker(worker_id: int, queues: Queues, strategy: Strategy, metrics: Metrics):
     while True:
+        if strategy.naive_mode:
+            if not queues.fifo.empty():
+                event = await queues.fifo.get()
+                await process_individual(event, metrics)
+            else:
+                await asyncio.sleep(0.01)
+            continue
+
         # Tier 1: always process (never defer, never batch)
         if not queues.tier1.empty():
             event = await queues.tier1.get()

@@ -34,6 +34,9 @@ SOURCE_CONFIG = {
 }
 
 
+MIN_SLEEP_INTERVAL = 0.001
+
+
 async def _source_loop(
     event_type: str,
     input_queue: asyncio.Queue,
@@ -47,15 +50,26 @@ async def _source_loop(
     while True:
         base = random.uniform(lo, hi)
         jitter = base * random.uniform(-0.25, 0.25)
-        interval = max(0.001, (base + jitter) / rate_multiplier[0])
+        raw_interval = (base + jitter) / rate_multiplier[0]
+
+        if raw_interval < MIN_SLEEP_INTERVAL:
+            burst_count = max(1, int(MIN_SLEEP_INTERVAL / raw_interval))
+            interval = MIN_SLEEP_INTERVAL
+        else:
+            burst_count = 1
+            interval = raw_interval
+
         await asyncio.sleep(interval)
 
-        event = Event(
-            type=event_type,
-            source=source_name,
-            payload=payload_fn(),
-        )
+        event = Event(type=event_type, source=source_name, payload=payload_fn())
         await input_queue.put(event)
+
+        for _ in range(burst_count - 1):
+            event = Event(type=event_type, source=source_name, payload=payload_fn())
+            try:
+                input_queue.put_nowait(event)
+            except asyncio.QueueFull:
+                break
 
 
 async def payment_source(input_queue: asyncio.Queue, rate_multiplier: list[float]):

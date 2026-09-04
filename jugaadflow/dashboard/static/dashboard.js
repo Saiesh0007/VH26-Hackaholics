@@ -97,6 +97,7 @@ const QUEUE_CONFIG = [
     { key: 'tier4',          label: 'Tier 4', max: 500,   css: 'tier4' },
     { key: 'deferred_tier2', label: 'Def T2', max: 3000,  css: 'deferred' },
     { key: 'deferred_tier3', label: 'Def T3', max: 2000,  css: 'deferred' },
+    { key: 'fifo',           label: 'FIFO',   max: null,  css: 'input' },
 ];
 
 function renderQueueDepths(queues) {

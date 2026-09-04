@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import time
 from pathlib import Path
 
@@ -8,6 +9,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from jugaadflow.generator.event import Event
+from jugaadflow.generator import payloads
 from jugaadflow.pipeline.queues import Queues
 from jugaadflow.pipeline.strategy import Strategy
 from jugaadflow.metrics.store import Metrics
@@ -20,6 +23,13 @@ BASE_EVENTS_PER_MIN = 3400.0
 
 class RateRequest(BaseModel):
     events_per_min: float
+
+
+class FloodRequest(BaseModel):
+    tier2_count: int = 4500
+    tier3_count: int = 1800
+    tier4_count: int = 480
+    input_count: int = 8000
 
 
 def create_app(
@@ -71,7 +81,7 @@ def create_app(
 
     @app.post("/api/rate")
     async def set_rate(req: RateRequest):
-        multiplier = max(0.1, min(100.0, req.events_per_min / BASE_EVENTS_PER_MIN))
+        multiplier = max(0.1, min(200.0, req.events_per_min / BASE_EVENTS_PER_MIN))
         rate_multiplier[0] = multiplier
         return {
             "rate_multiplier": round(multiplier, 2),
@@ -81,12 +91,74 @@ def create_app(
     @app.post("/api/mode/naive")
     async def set_naive():
         app.state.naive_mode = True
+        strategy.naive_mode = True
+        strategy.level = 0
+        strategy.tier2 = "process"
+        strategy.tier3 = "process"
+        strategy.tier4 = "process"
+        strategy.drain_deferred = False
         return {"mode": "naive"}
 
     @app.post("/api/mode/adaptive")
     async def set_adaptive():
         app.state.naive_mode = False
+        strategy.naive_mode = False
         return {"mode": "adaptive"}
+
+    @app.post("/api/flood")
+    async def trigger_flood(req: FloodRequest = FloodRequest()):
+        injected = {"tier2": 0, "tier3": 0, "tier4": 0, "input": 0}
+        overflow = {"tier2": 0, "tier3": 0, "tier4": 0, "input": 0}
+
+        for _ in range(req.tier2_count):
+            evt = Event(type="inventory", source="flood-sim",
+                        payload=payloads.inventory_payload(), priority=2)
+            try:
+                queues.tier2.put_nowait(evt)
+                injected["tier2"] += 1
+            except asyncio.QueueFull:
+                overflow["tier2"] += 1
+                metrics.shed_count["inventory"] += 1
+
+        for _ in range(req.tier3_count):
+            evt = Event(type="click", source="flood-sim",
+                        payload=payloads.click_payload(), priority=3)
+            try:
+                queues.tier3.put_nowait(evt)
+                injected["tier3"] += 1
+            except asyncio.QueueFull:
+                overflow["tier3"] += 1
+                metrics.shed_count["click"] += 1
+
+        for _ in range(req.tier4_count):
+            evt = Event(type="log", source="flood-sim",
+                        payload=payloads.log_payload(), priority=4)
+            try:
+                queues.tier4.put_nowait(evt)
+                injected["tier4"] += 1
+            except asyncio.QueueFull:
+                overflow["tier4"] += 1
+                metrics.shed_count["log"] += 1
+
+        type_pool = [
+            ("inventory", payloads.inventory_payload, "inventory-service"),
+            ("click", payloads.click_payload, "clickstream"),
+            ("log", payloads.log_payload, "app-logger"),
+        ]
+        for _ in range(req.input_count):
+            etype, pfn, src = random.choice(type_pool)
+            evt = Event(type=etype, source="flood-sim", payload=pfn())
+            try:
+                queues.input_queue.put_nowait(evt)
+                injected["input"] += 1
+            except asyncio.QueueFull:
+                overflow["input"] += 1
+
+        return {
+            "status": "flood_injected",
+            "injected": injected,
+            "overflow": overflow,
+        }
 
     app.state.clients = clients
     app.state.naive_mode = False
@@ -125,6 +197,7 @@ def build_metrics_payload(
             "deferred_tier2": queues.deferred_tier2.qsize(),
             "deferred_tier3": queues.deferred_tier3.qsize(),
             "input": queues.input_queue.qsize(),
+            "fifo": queues.fifo.qsize(),
         },
         "latency_ms": {
             f"tier{t}": (round(ms, 1) if (ms := metrics.avg_latency_ms(t)) is not None else None)
