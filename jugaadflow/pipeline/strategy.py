@@ -7,6 +7,6 @@ class Strategy:
     tier2: str = "process"
     tier3: str = "process"
     tier4: str = "process"
-    batch_sizes: dict = field(default_factory=lambda: {"tier2": 5, "tier3": 10, "tier4": 20})
+    batch_sizes: dict = field(default_factory=lambda: {"tier2": 20, "tier3": 50, "tier4": 100})
     shed_sample_rate: float = 0.1
     drain_deferred: bool = False

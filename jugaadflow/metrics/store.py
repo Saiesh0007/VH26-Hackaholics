@@ -38,6 +38,9 @@ class Metrics:
     incoming_rate: float = 0.0
     start_time: float = field(default_factory=time.time)
 
+    recent_events: deque = field(default_factory=lambda: deque(maxlen=50))
+    recent_decisions: deque = field(default_factory=lambda: deque(maxlen=50))
+
     def record_classified(self, tier: int):
         self.classified_window[tier] += 1
 

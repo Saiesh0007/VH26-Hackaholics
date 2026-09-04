@@ -1,14 +1,16 @@
-# JugaadFlow — Code Review Fix List
+# JugaadFlow — Code Review Fix List (Round 3)
 
-Read this file, then apply all fixes in order. Start with MUST FIX, then SHOULD FIX, then NICE TO FIX, then STILL NEEDED. After all fixes, run the 6 test files to verify.
+Read this file, then apply all fixes in order. Start with MUST FIX, then SHOULD FIX, then NICE TO FIX, then STILL NEEDED.
+
+**Previously fixed (confirmed):** source intervals match architecture.md, main.py exists, worker.py tier guards cleaned up, backpressure detection added to decision_engine, metrics enhanced with classified_window/recent_events/recent_decisions, dashboard enhanced with queue bars + classification chart + rate presets.
 
 ---
 
 ## MUST FIX (correctness bugs)
 
-### 1. decision_engine.py — de-escalation ignores tier 1 latency
+### 1. decision_engine.py — de-escalation STILL ignores tier 1 latency
 
-File: `jugaadflow/pipeline/decision_engine.py`, function `_check_deescalation()`
+File: `jugaadflow/pipeline/decision_engine.py`, function `_check_deescalation()` (line 58)
 
 The spec requires BOTH latency AND queue depth for de-escalation:
 ```
@@ -17,59 +19,96 @@ Critical→Elevated:  t1_latency < 60ms  AND t1_queue < 50
 Elevated→Normal:    t1_latency < 40ms  AND t1_queue < 10
 ```
 
-Currently only checks `t1_queue` and `lower_q`, completely ignores `t1_latency_ms`. This causes flapping: de-escalates while latency is still high, then immediately re-escalates.
+The function signature doesn't even accept `t1_latency_ms`. It only checks `t1_queue` and `lower_q_shrinking`. Without the latency check, the system de-escalates while tier 1 latency is still dangerously high, then immediately re-escalates (flapping).
 
-Fix:
+Fix — change the signature and add latency checks:
 ```python
-def _check_deescalation(t1_latency_ms, t1_queue, lower_q, current_level):
-    if current_level == 3 and t1_latency_ms < 100 and t1_queue < 200 and lower_q < 1500:
+def _check_deescalation(t1_latency_ms: float, t1_queue: int, lower_q: int, lower_q_shrinking: bool, current_level: int) -> int | None:
+    if current_level == 3 and t1_latency_ms < 100 and t1_queue < 10 and lower_q_shrinking:
         return 2
-    if current_level == 2 and t1_latency_ms < 60 and t1_queue < 50 and lower_q < 500:
+    if current_level == 2 and t1_latency_ms < 60 and t1_queue < 5 and lower_q_shrinking:
         return 1
-    if current_level == 1 and t1_latency_ms < 40 and t1_queue < 10 and lower_q < 50:
+    if current_level == 1 and t1_latency_ms < 40 and t1_queue < 5 and lower_q < 20:
         return 0
     return None
 ```
 
+Also update the call site on line 113 to pass `t1_latency_ms`:
+```python
+de_target = _check_deescalation(t1_latency_ms, t1_queue, lower_q, lower_q_shrinking, strategy.level)
+```
+
 ### 2. server.py — clients.remove(ws) can raise ValueError
 
-File: `jugaadflow/dashboard/server.py`, function `websocket_endpoint()`
+File: `jugaadflow/dashboard/server.py`, line 59
 
-Race between `metrics_broadcaster` removing dead clients and the `WebSocketDisconnect` handler. If broadcaster removes the client first, `remove()` throws `ValueError`.
+Race between `metrics_broadcaster` removing dead clients (lines 165-167) and the `WebSocketDisconnect` handler. If broadcaster removes the client first, `remove()` throws `ValueError`.
 
-Fix — change the except block:
+Fix:
 ```python
 except WebSocketDisconnect:
     if ws in clients:
         clients.remove(ws)
 ```
 
+### 3. decision_engine.py — batch sizes deviate from spec
+
+File: `jugaadflow/pipeline/decision_engine.py`, `LEVEL_STRATEGIES` (lines 13-26)
+Also: `jugaadflow/pipeline/strategy.py`, default `batch_sizes` (line 10)
+
+The spec (CLAUDE.md + architecture.md) says:
+```
+Level 1: tier3 batch(50), tier4 batch(100)
+Level 2: tier2 batch(20)
+```
+
+The code has `{"tier2": 5, "tier3": 10, "tier4": 20}` — 4-5x smaller than spec. Smaller batches mean less throughput benefit from batching. At 20x spike, workers batch 10-20 events instead of 50-100.
+
+Fix — update all four LEVEL_STRATEGIES entries and the Strategy default:
+
+In `decision_engine.py`:
+```python
+LEVEL_STRATEGIES = {
+    0: {... "batch_sizes": {"tier2": 20, "tier3": 50, "tier4": 100}, ...},
+    1: {... "batch_sizes": {"tier2": 20, "tier3": 50, "tier4": 100}, ...},
+    2: {... "batch_sizes": {"tier2": 20, "tier3": 50, "tier4": 100}, ...},
+    3: {... "batch_sizes": {"tier2": 20, "tier3": 50, "tier4": 100}, ...},
+}
+```
+
+In `strategy.py`:
+```python
+batch_sizes: dict = field(default_factory=lambda: {"tier2": 20, "tier3": 50, "tier4": 100})
+```
+
+If the smaller sizes were intentional tuning, document why and update the spec.
+
 ---
 
 ## SHOULD FIX (affects demo quality)
 
-### 3. server.py — avg_latency_ms() called twice per tier
+### 4. server.py — avg_latency_ms() called twice per tier
 
-File: `jugaadflow/dashboard/server.py`, function `build_metrics_payload()`
+File: `jugaadflow/dashboard/server.py`, lines 128-131
 
-Each call iterates up to 500 deque elements. Called 2x per tier × 4 tiers = 8 wasted iterations every second.
+Each `avg_latency_ms()` iterates 500 deque elements. Called 2x per tier x 4 tiers = 8 wasted iterations every second.
 
-Fix — cache the result:
+Fix:
 ```python
 latency = {}
 for t in range(1, 5):
     ms = metrics.avg_latency_ms(t)
     latency[f"tier{t}"] = round(ms, 1) if ms is not None else None
 ```
-Then use the `latency` dict in the return payload instead of calling `avg_latency_ms()` inline.
+Then use the `latency` dict in the return payload.
 
-### 4. dashboard.js — null latency renders as 0ms on chart
+### 5. dashboard.js — null latency renders as 0ms on chart
 
-File: `jugaadflow/dashboard/static/dashboard.js`
+File: `jugaadflow/dashboard/static/dashboard.js`, lines 164-169
 
-`data.latency_ms.tier1 || 0` makes "no data" look like "0ms = instant" on the chart. Misleading during deferral when a tier has no samples.
+`data.latency_ms.tier1 || 0` makes "no data" look like "0ms = instant" on the chart when a tier is deferred and has no samples.
 
-Fix — in the `handleMessage()` latency chart section:
+Fix:
 ```javascript
 pushChartData(latencyChart, label, [
     data.latency_ms.tier1,
@@ -78,15 +117,15 @@ pushChartData(latencyChart, label, [
     data.latency_ms.tier4,
 ]);
 ```
-And add `spanGaps: false` to each latency dataset in `initCharts()` so Chart.js breaks the line at null points instead of drawing to 0.
+And add `spanGaps: false` to each latency dataset in `initCharts()`.
 
-### 5. classifier.py — incoming_rate never updated
+### 6. classifier.py — incoming_rate never updated
 
-File: `jugaadflow/pipeline/classifier.py`, function `classifier_loop()`
+File: `jugaadflow/pipeline/classifier.py`, function `classifier_loop()` (line 37)
 
-`metrics.incoming_rate` is always 0.0. Dashboard always shows 0 for incoming rate.
+`metrics.incoming_rate` is always 0.0. Dashboard always shows 0.
 
-Fix — add rate tracking to the classifier loop:
+Fix — add rate tracking:
 ```python
 async def classifier_loop(queues, metrics, strategy=None):
     if strategy is None:
@@ -103,64 +142,108 @@ async def classifier_loop(queues, metrics, strategy=None):
             count = 0
             window_start = now
 ```
-Add `import time` at the top if not already present.
 
-### 6. test_decision_engine.py — hardcoded True in "stayed NORMAL" check
+### 7. classifier.py — strategy-aware routing was removed, stale events accumulate
+
+File: `jugaadflow/pipeline/classifier.py`, function `classify_and_route()` (line 19)
+
+The previous version intercepted "defer" strategies and routed directly to deferred queues. That was removed. Now when `strategy.tier3 == "defer"`, the classifier still fills the tier 3 queue to maxsize=2000 before overflow kicks in. Workers skip the tier 3 queue (strategy says defer), so those 2000 events sit idle with growing latency. When strategy changes back, they all get processed with massive latency spikes.
+
+Fix — re-add strategy-aware routing:
+```python
+TIER_STRATEGY_KEY = {2: "tier2", 3: "tier3", 4: "tier4"}
+
+async def classify_and_route(event, queues, metrics, strategy):
+    event.priority = PRIORITY_MAP[event.type]
+    metrics.record_classified(event.priority)
+
+    strat_key = TIER_STRATEGY_KEY.get(event.priority)
+    if strat_key and getattr(strategy, strat_key) == "defer":
+        deferred = queues.deferred(event.priority)
+        if deferred is not None:
+            try:
+                deferred.put_nowait(event)
+                metrics.deferred_count[event.type] += 1
+                _log_event(metrics, event, f"deferred_tier{event.priority}", "defer")
+                return
+            except asyncio.QueueFull:
+                metrics.shed_count[event.type] += 1
+                _log_event(metrics, event, "shed", "shed")
+                return
+
+    await route_to_queue(event, queues, metrics)
+```
+
+### 8. test_decision_engine.py — hardcoded True in "stayed NORMAL" check
 
 File: `tests/test_decision_engine.py`, line 77
 
-`'PASS' if True else 'FAIL'` always passes regardless of actual level.
+`'PASS' if True else 'FAIL'` always passes.
 
-Fix — capture the level after Phase 1:
+Fix — capture level after Phase 1:
 ```python
-# After Phase 1 sleep (around line 54):
+# After Phase 1 sleep (line 54):
 normal_level = strategy.level
 
-# In the summary section (around line 77):
+# In summary (line 77):
 print(f"  Normal -> stayed NORMAL: {'PASS' if normal_level == 0 else 'FAIL'}")
 ```
 
-### 7. test_defer_shed.py — 15s recovery too short
+### 9. test_defer_shed.py — 15s recovery too short
 
 File: `tests/test_defer_shed.py`, line 69
 
-De-escalation from Emergency→Normal takes 18s minimum (6s cooldown × 3 level steps). Deferred drain only starts at Level 0 (drain_deferred=True). With only 15s, the system never reaches Normal and deferred queues never drain.
+De-escalation from Emergency→Normal takes 18s minimum (6s cooldown x 3 level steps). Deferred drain only starts at Level 0 (or Level 1 with the current code). 15s may not be enough.
 
 Fix:
 ```python
 await asyncio.sleep(25.0)
 ```
 
-### 8. dashboard.js — mode toggle desyncs on page refresh
+### 10. test_generator.py — rate check bounds wrong for new base rate
+
+File: `tests/test_generator.py`, line 127
+
+`rate_ok = 500 < rate_per_min_normal < 3000` — but with the architecture.md intervals, the normal rate is ~3400/min. This check will FAIL every time.
+
+Fix:
+```python
+rate_ok = 2000 < rate_per_min_normal < 5000
+```
+
+### 11. dashboard.js — mode toggle desyncs on refresh
 
 File: `jugaadflow/dashboard/static/dashboard.js` and `jugaadflow/dashboard/server.py`
 
-`currentMode` is local JS state. If the page refreshes, it resets to 'adaptive' even if naive mode is active on the server.
+`currentMode` is local JS state. On page refresh it resets to 'adaptive'.
 
-Fix — in `server.py` `build_metrics_payload()`, add to the returned dict:
+Fix — in `server.py` `build_metrics_payload()`, add:
 ```python
 "naive_mode": app.state.naive_mode,
 ```
-
-Then in `dashboard.js` `handleMessage()`, add:
+You'll need to pass `app` to `build_metrics_payload()` or store the reference. Then in `dashboard.js` `handleMessage()`, add:
 ```javascript
-const btn = document.getElementById('modeBtn');
-btn.textContent = data.naive_mode ? 'Mode: Naive' : 'Mode: Adaptive';
-currentMode = data.naive_mode ? 'naive' : 'adaptive';
+if (data.naive_mode !== undefined) {
+    currentMode = data.naive_mode ? 'naive' : 'adaptive';
+    document.getElementById('modeBtn').textContent = 'Mode: ' + (data.naive_mode ? 'Naive' : 'Adaptive');
+}
 ```
 
 ---
 
 ## NICE TO FIX (code quality)
 
-### 9. event.py — unnecessary threading.Lock
+### 12. event.py — unnecessary threading.Lock
 
-File: `jugaadflow/generator/event.py`
+File: `jugaadflow/generator/event.py`, lines 2, 7-8, 10-14
 
 Asyncio is single-threaded. The lock is never contested. CLAUDE.md says "Don't use threads."
 
-Fix — remove `import threading`, the `_counter_lock`, and simplify:
+Fix:
 ```python
+import time
+from dataclasses import dataclass, field
+
 _counter = 0
 
 def _next_id() -> str:
@@ -169,17 +252,15 @@ def _next_id() -> str:
     return f"evt-{_counter:05d}"
 ```
 
-### 10. decision_engine.py — escalation has undocumented lower_q triggers
+### 13. classifier.py — dead code `_log_event()`
 
-File: `jugaadflow/pipeline/decision_engine.py`, function `_check_escalation()`
+File: `jugaadflow/pipeline/classifier.py`, lines 25-34
 
-The spec says escalation is based on t1_latency and t1_queue ONLY. The code adds `lower_q > 200/1000/3000` as additional OR conditions. This can cause unnecessary escalation when tier 1 is fine but lower queues are deep.
+`_log_event()` is defined but never called in this file. The active copy lives in `overflow.py`. Remove the dead copy from classifier.py.
 
-Decision needed: either remove `lower_q` from escalation to match the spec exactly, or keep it and document it as an intentional enhancement in CLAUDE.md and architecture.md. If presenting to judges against the spec, matching the spec is safer.
+### 14. style.css + dashboard.js — canvas sizing conflict
 
-### 11. style.css + dashboard.js — canvas sizing conflict
-
-File: `jugaadflow/dashboard/static/style.css` and `jugaadflow/dashboard/static/dashboard.js`
+File: `jugaadflow/dashboard/static/style.css` line 45, `jugaadflow/dashboard/static/dashboard.js`
 
 `!important` on canvas width/height overrides Chart.js responsive behavior.
 
@@ -187,85 +268,51 @@ Fix — in `dashboard.js`, add to `sharedOpts`:
 ```javascript
 maintainAspectRatio: false,
 ```
-Then in `style.css`, the `!important` can stay as a fallback or be removed.
 
-### 12. server.py — unused import
+### 15. test_batching.py — weak assertions
 
-File: `jugaadflow/dashboard/server.py`
-
-`from fastapi.staticfiles import StaticFiles` is imported but never used. Remove it.
-
-### 13. test_batching.py — weak assertions
-
-File: `tests/test_batching.py`
+File: `tests/test_batching.py`, lines 64-66
 
 Only checks `total_batched_spike > 0`. Doesn't verify which types were batched.
 
-Fix — add to the summary:
+Fix — add:
 ```python
 click_or_log_batched = batched_spike.get('click', 0) + batched_spike.get('log', 0) > 0
 print(f"  Click/log batched:   {'PASS' if click_or_log_batched else 'FAIL'}")
 print(f"  Payment NOT batched: {'PASS' if batched_spike.get('payment', 0) == 0 else 'FAIL'}")
 ```
 
+### 16. decision_engine.py — escalation lower_q thresholds are very aggressive
+
+File: `jugaadflow/pipeline/decision_engine.py`, `_check_escalation()` (lines 48-55)
+
+Escalation triggers include `lower_q > 50/200/500`. These are much tighter than the previous values (200/1000/3000) and not in the spec at all. With the ~3400/min base rate, lower queues will fluctuate and could trigger unnecessary escalation during normal load.
+
+If the `lower_q` triggers are intentional (an improvement over spec), document them. Otherwise, remove them and rely only on t1_latency and t1_queue per spec:
+```python
+def _check_escalation(t1_latency_ms, t1_queue, current_level):
+    if current_level < 3 and (t1_latency_ms > 300 or t1_queue > 1000):
+        return 3
+    if current_level < 2 and (t1_latency_ms > 150 or t1_queue > 500):
+        return 2
+    if current_level < 1 and (t1_latency_ms > 80 or t1_queue > 100):
+        return 1
+    return None
+```
+
 ---
 
 ## STILL NEEDED (not yet built)
 
-### 14. main.py — entry point
+### 17. Naive mode wiring
 
-File: `jugaadflow/main.py` (create new)
+`app.state.naive_mode` is set by the dashboard toggle but nothing reads it. Need a mechanism to swap between adaptive and naive. The naive functions exist in `jugaadflow/benchmark/naive.py`.
 
-Wire everything together. Rough structure:
-```python
-import asyncio
-import uvicorn
-from jugaadflow.generator.sources import ALL_SOURCES
-from jugaadflow.pipeline.queues import create_queues
-from jugaadflow.pipeline.classifier import classifier_loop
-from jugaadflow.pipeline.strategy import Strategy
-from jugaadflow.pipeline.worker import worker
-from jugaadflow.pipeline.decision_engine import feedback_loop
-from jugaadflow.metrics.store import Metrics
-from jugaadflow.dashboard.server import create_app, metrics_broadcaster
-
-async def main():
-    queues = create_queues()
-    strategy = Strategy()
-    metrics = Metrics()
-    rate_multiplier = [1.0]
-
-    app = create_app(queues, strategy, metrics, rate_multiplier)
-
-    config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="warning")
-    server = uvicorn.Server(config)
-
-    await asyncio.gather(
-        *[src(queues.input_queue, rate_multiplier) for src in ALL_SOURCES],
-        classifier_loop(queues, metrics, strategy),
-        *[worker(i, queues, strategy, metrics) for i in range(8)],
-        feedback_loop(queues, strategy, metrics),
-        metrics_broadcaster(queues, strategy, metrics, rate_multiplier, app),
-        server.serve(),
-    )
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-### 15. Naive mode wiring
-
-`app.state.naive_mode` flag is set by the dashboard toggle but nothing reads it. Need a mechanism to swap between adaptive and naive pipelines at runtime. Options:
-- Have workers check a shared `naive_mode` flag and pull from a FIFO queue when True
-- Or cancel adaptive tasks and start naive tasks on toggle (more complex, cleaner separation)
-
-The naive functions already exist in `jugaadflow/benchmark/naive.py` (`naive_classifier_loop`, `naive_worker`).
-
-### 16. plan.md — fix shed rate discrepancy
+### 18. plan.md — fix shed rate discrepancy
 
 File: `plan.md`
 
-Level 2 says "shed (sample 1 in 5)" which is 20% kept. CLAUDE.md and the code both say 10%. Change plan.md to match: "shed (sample 1 in 10)" or "shed (sample 10%)".
+Level 2 says "shed (sample 1 in 5)" (20% kept). CLAUDE.md and the code both say 10%. Update plan.md.
 
 ---
 
@@ -282,8 +329,18 @@ python tests/test_batching.py
 python tests/test_defer_shed.py
 ```
 
-Key things to verify:
-- test_decision_engine: escalates during spike AND de-escalates during recovery (no flapping)
-- ALL tests: `Payment never shed: PASS`
-- test_defer_shed: deferred queues drain during recovery (with the longer 25s sleep)
-- Once main.py exists: `python jugaadflow/main.py` starts the dashboard at http://localhost:8000
+Then run the full pipeline:
+```bash
+python jugaadflow/main.py
+```
+Open http://localhost:8000 and verify:
+- Dashboard loads, WebSocket connects, charts update
+- Click rate presets — queue depths and level should respond
+- At 68K/min (20x): level should escalate, shed counter should climb for logs, payment shed stays 0
+- Return to 3.4K/min: level should de-escalate smoothly (no flapping), deferred queues should drain
+
+Key assertions across all tests:
+- `Payment never shed: PASS`
+- `test_decision_engine`: escalates during spike AND de-escalates during recovery
+- `test_generator`: rate bounds pass with updated thresholds
+- `test_defer_shed`: deferred queues drain during recovery (with longer sleep)

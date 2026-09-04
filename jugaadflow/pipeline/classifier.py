@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from jugaadflow.generator.event import Event
 from jugaadflow.pipeline.queues import Queues
@@ -39,6 +40,14 @@ async def classify_and_route(event: Event, queues: Queues, metrics: Metrics, str
 async def classifier_loop(queues: Queues, metrics: Metrics, strategy: Strategy | None = None):
     if strategy is None:
         strategy = Strategy()
+    count = 0
+    window_start = time.time()
     while True:
         event = await queues.input_queue.get()
         await classify_and_route(event, queues, metrics, strategy)
+        count += 1
+        now = time.time()
+        if now - window_start >= 1.0:
+            metrics.incoming_rate = count / (now - window_start)
+            count = 0
+            window_start = now

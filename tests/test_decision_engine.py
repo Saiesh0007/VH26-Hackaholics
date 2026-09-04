@@ -51,6 +51,7 @@ async def run_test():
 
     print("\n--- Phase 1: Normal rate for 5s ---")
     await asyncio.sleep(5.0)
+    normal_level = strategy.level
     print(f"\n  Level after normal: {LEVEL_NAMES[strategy.level]} (expected NORMAL)")
 
     print("\n--- Phase 2: Spike 20x for 10s ---")
@@ -74,7 +75,7 @@ async def run_test():
     print(f"\n  Payment shed count: {metrics.shed_count['payment']} (must be 0)")
     print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"  Normal → stayed NORMAL: {'PASS' if True else 'FAIL'}")
+    print(f"  Normal → stayed NORMAL: {'PASS' if normal_level == 0 else 'FAIL'}")
     print(f"  Spike → escalated:      {'PASS' if spike_level > 0 else 'FAIL'}")
     print(f"  Recovery → de-escalated: {'PASS' if recovery_level < spike_level else 'CHECK'}")
     print(f"  Payment never shed:      {'PASS' if metrics.shed_count['payment'] == 0 else 'FAIL'}")

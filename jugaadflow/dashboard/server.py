@@ -14,6 +14,7 @@ from jugaadflow.metrics.store import Metrics
 from jugaadflow.pipeline.decision_engine import LEVEL_NAMES
 
 STATIC_DIR = Path(__file__).parent / "static"
+FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
 BASE_EVENTS_PER_MIN = 3400.0
 
 
@@ -30,25 +31,22 @@ def create_app(
     app = FastAPI(title="JugaadFlow Dashboard")
     clients: list[WebSocket] = []
 
-    @app.get("/")
-    async def index():
-        return HTMLResponse((STATIC_DIR / "index.html").read_text())
+    if FRONTEND_DIST.exists():
+        app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
-    @app.get("/style.css")
-    async def style():
-        from fastapi.responses import Response
-        return Response(
-            content=(STATIC_DIR / "style.css").read_text(),
-            media_type="text/css",
-        )
+        @app.get("/old")
+        async def old_dashboard():
+            return HTMLResponse((STATIC_DIR / "index.html").read_text())
+    else:
+        @app.get("/style.css")
+        async def style():
+            from fastapi.responses import Response
+            return Response(content=(STATIC_DIR / "style.css").read_text(), media_type="text/css")
 
-    @app.get("/dashboard.js")
-    async def js():
-        from fastapi.responses import Response
-        return Response(
-            content=(STATIC_DIR / "dashboard.js").read_text(),
-            media_type="application/javascript",
-        )
+        @app.get("/dashboard.js")
+        async def js():
+            from fastapi.responses import Response
+            return Response(content=(STATIC_DIR / "dashboard.js").read_text(), media_type="application/javascript")
 
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket):
@@ -58,7 +56,8 @@ def create_app(
             while True:
                 await ws.receive_text()
         except WebSocketDisconnect:
-            clients.remove(ws)
+            if ws in clients:
+                clients.remove(ws)
 
     @app.post("/api/spike")
     async def trigger_spike():
@@ -91,6 +90,17 @@ def create_app(
 
     app.state.clients = clients
     app.state.naive_mode = False
+
+    @app.get("/{path:path}")
+    async def spa_fallback(path: str):
+        from fastapi.responses import FileResponse
+        if FRONTEND_DIST.exists():
+            file_path = FRONTEND_DIST / path
+            if file_path.is_file():
+                return FileResponse(file_path)
+            return FileResponse(FRONTEND_DIST / "index.html")
+        return HTMLResponse((STATIC_DIR / "index.html").read_text())
+
     return app
 
 
@@ -99,6 +109,7 @@ def build_metrics_payload(
     strategy: Strategy,
     metrics: Metrics,
     rate_multiplier: list[float],
+    app_ref=None,
 ) -> dict:
     return {
         "timestamp": time.time(),
@@ -116,11 +127,10 @@ def build_metrics_payload(
             "input": queues.input_queue.qsize(),
         },
         "latency_ms": {
-            "tier1": round(metrics.avg_latency_ms(1), 1) if metrics.avg_latency_ms(1) is not None else None,
-            "tier2": round(metrics.avg_latency_ms(2), 1) if metrics.avg_latency_ms(2) is not None else None,
-            "tier3": round(metrics.avg_latency_ms(3), 1) if metrics.avg_latency_ms(3) is not None else None,
-            "tier4": round(metrics.avg_latency_ms(4), 1) if metrics.avg_latency_ms(4) is not None else None,
+            f"tier{t}": (round(ms, 1) if (ms := metrics.avg_latency_ms(t)) is not None else None)
+            for t in range(1, 5)
         },
+        "naive_mode": getattr(app_ref.state, 'naive_mode', False) if app_ref else False,
         "throughput_per_sec": dict(metrics.throughput_window),
         "counters": {
             "processed": dict(metrics.processed_count),
@@ -130,6 +140,8 @@ def build_metrics_payload(
         },
         "incoming_rate": metrics.incoming_rate,
         "classified_per_sec": dict(metrics.classified_window),
+        "recent_events": list(metrics.recent_events),
+        "recent_decisions": list(metrics.recent_decisions),
     }
 
 
@@ -143,7 +155,7 @@ async def metrics_broadcaster(
 ):
     while True:
         await asyncio.sleep(interval)
-        payload = build_metrics_payload(queues, strategy, metrics, rate_multiplier)
+        payload = build_metrics_payload(queues, strategy, metrics, rate_multiplier, app)
         metrics.reset_throughput()
         data = json.dumps(payload)
         dead = []

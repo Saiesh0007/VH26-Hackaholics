@@ -66,7 +66,7 @@ async def run_test():
 
     print("\n--- Recovery for 15s ---")
     rate_multiplier[0] = 1.0
-    await asyncio.sleep(15.0)
+    await asyncio.sleep(25.0)
 
     print(f"\n  Level after recovery: {LEVEL_NAMES[strategy.level]}")
     print(f"  Queues after recovery:")

@@ -97,7 +97,7 @@ Level 2 — Critical:
   Tier 1: process
   Tier 2: batch (groups of 20)
   Tier 3: defer
-  Tier 4: shed (sample 1 in 5)
+  Tier 4: shed (sample 1 in 10)
 
 Level 3 — Emergency:
   Tier 1: process + backpressure if needed

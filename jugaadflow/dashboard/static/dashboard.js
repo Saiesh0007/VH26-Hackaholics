@@ -14,6 +14,7 @@ const TIER_LABELS = ['Tier 1 (Payment/Order)', 'Tier 2 (Inventory)', 'Tier 3 (Cl
 function initCharts() {
     const sharedOpts = {
         responsive: true,
+        maintainAspectRatio: false,
         animation: { duration: 200 },
         scales: {
             x: { display: false },
@@ -27,10 +28,10 @@ function initCharts() {
         data: {
             labels: [],
             datasets: [
-                { label: 'Tier 1', data: [], borderColor: TIER_COLORS[1], borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'Tier 2', data: [], borderColor: TIER_COLORS[2], borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'Tier 3', data: [], borderColor: TIER_COLORS[3], borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'Tier 4', data: [], borderColor: TIER_COLORS[4], borderWidth: 2, pointRadius: 0, tension: 0.3 },
+                { label: 'Tier 1', data: [], borderColor: TIER_COLORS[1], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
+                { label: 'Tier 2', data: [], borderColor: TIER_COLORS[2], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
+                { label: 'Tier 3', data: [], borderColor: TIER_COLORS[3], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
+                { label: 'Tier 4', data: [], borderColor: TIER_COLORS[4], borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: false },
             ]
         },
         options: sharedOpts
@@ -162,10 +163,10 @@ function handleMessage(data) {
     // Charts
     const label = new Date(data.timestamp * 1000).toLocaleTimeString();
     pushChartData(latencyChart, label, [
-        data.latency_ms.tier1 || 0,
-        data.latency_ms.tier2 || 0,
-        data.latency_ms.tier3 || 0,
-        data.latency_ms.tier4 || 0,
+        data.latency_ms.tier1,
+        data.latency_ms.tier2,
+        data.latency_ms.tier3,
+        data.latency_ms.tier4,
     ]);
     pushChartData(throughputChart, label, [
         data.throughput_per_sec['1'] || 0,
@@ -185,6 +186,12 @@ function handleMessage(data) {
             const pct = ((v / total) * 100).toFixed(0);
             return `<span class="class-badge" style="border-color:${TIER_COLORS[i+1]}">T${i+1}: ${v}/s (${pct}%)</span>`;
         }).join('');
+    }
+
+    // Mode sync
+    if (data.naive_mode !== undefined) {
+        currentMode = data.naive_mode ? 'naive' : 'adaptive';
+        document.getElementById('modeBtn').textContent = 'Mode: ' + (data.naive_mode ? 'Naive' : 'Adaptive');
     }
 
     // Counter tables

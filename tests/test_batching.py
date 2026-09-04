@@ -61,9 +61,11 @@ async def run_test():
 
     print(f"\n{'=' * 60}")
     print("SUMMARY")
+    click_or_log_batched = batched_spike.get('click', 0) + batched_spike.get('log', 0) > 0
     print(f"  Batching occurred during spike: {'PASS' if total_batched_spike > 0 else 'FAIL'}")
-    print(f"  No payment batched: {'PASS' if batched_spike.get('payment', 0) == 0 else 'INFO (tier1 never batched)'}")
-    print(f"  Payment never shed: {'PASS' if metrics.shed_count['payment'] == 0 else 'FAIL'}")
+    print(f"  Click/log batched:              {'PASS' if click_or_log_batched else 'FAIL'}")
+    print(f"  Payment NOT batched:            {'PASS' if batched_spike.get('payment', 0) == 0 else 'FAIL'}")
+    print(f"  Payment never shed:             {'PASS' if metrics.shed_count['payment'] == 0 else 'FAIL'}")
     print("=" * 60)
 
 

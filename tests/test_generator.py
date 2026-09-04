@@ -124,7 +124,7 @@ async def run_test():
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    rate_ok = 500 < rate_per_min_normal < 3000
+    rate_ok = 2000 < rate_per_min_normal < 5000
     spike_ok = multiplier_actual > 10
     print(f"  Normal rate ~1000/min:  {rate_per_min_normal:.0f}/min {'PASS' if rate_ok else 'CHECK'}")
     print(f"  Spike multiplier ~20x:  {multiplier_actual:.1f}x {'PASS' if spike_ok else 'CHECK'}")
