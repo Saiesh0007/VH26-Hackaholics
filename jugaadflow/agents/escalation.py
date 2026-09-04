@@ -16,7 +16,8 @@ from jugaadflow.pipeline.decision_engine import LEVEL_NAMES
 logger = logging.getLogger("jugaadflow.escalation")
 
 TWILIO_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH = os.environ.get("TWILIO_AUTH_TOKEN", "")
+TWILIO_API_KEY = os.environ.get("TWILIO_API_KEY_SID", "")
+TWILIO_API_SECRET = os.environ.get("TWILIO_API_KEY_SECRET", "")
 TWILIO_FROM = os.environ.get("TWILIO_FROM_NUMBER", "")
 ALERT_PHONE = os.environ.get("ALERT_PHONE_NUMBER", "")
 
@@ -40,6 +41,22 @@ STATIC_FALLBACK = (
     "Current escalation level is {level}. "
     "Please check the dashboard immediately at localhost port 8000."
 )
+
+_ngrok_url: str | None = None
+
+
+def _get_public_url() -> str:
+    global _ngrok_url
+    if _ngrok_url:
+        return _ngrok_url
+    from pyngrok import ngrok
+    tunnel = ngrok.connect(8000)
+    url = tunnel.public_url
+    if url.startswith("http://"):
+        url = "https://" + url[7:]
+    _ngrok_url = url
+    logger.info("ngrok tunnel opened: %s", url)
+    return _ngrok_url
 
 
 def _check_triggers(agent_state: AgentState, metrics: Metrics) -> str | None:
@@ -96,13 +113,20 @@ async def _generate_call_message(client, reason: str, metrics: Metrics, queues: 
         return STATIC_FALLBACK.format(reason=reason, level=LEVEL_NAMES.get(metrics.current_level, "UNKNOWN"))
 
 
+pending_call_message: str = ""
+
+
 def _make_twilio_call(message: str):
+    import jugaadflow.agents.escalation as _self
+    _self.pending_call_message = message
+
+    public_url = _get_public_url()
+    twiml_url = f"{public_url}/api/twiml/alert"
+
     from twilio.rest import Client
-    client = Client(TWILIO_SID, TWILIO_AUTH)
-    safe_msg = xml_escape(message)
-    twiml = f'<Response><Say voice="Polly.Amy">{safe_msg}</Say></Response>'
+    client = Client(TWILIO_API_KEY, TWILIO_API_SECRET, TWILIO_SID)
     call = client.calls.create(
-        twiml=twiml,
+        url=twiml_url,
         to=ALERT_PHONE,
         from_=TWILIO_FROM,
     )
@@ -131,7 +155,7 @@ async def escalation_monitor_loop(
     agent_state: AgentState,
     poll_interval: float = 5.0,
 ):
-    if not all([TWILIO_SID, TWILIO_AUTH, TWILIO_FROM, ALERT_PHONE]):
+    if not all([TWILIO_SID, TWILIO_API_KEY, TWILIO_API_SECRET, TWILIO_FROM, ALERT_PHONE]):
         logger.warning("Twilio credentials incomplete — escalation monitor disabled")
         return
 

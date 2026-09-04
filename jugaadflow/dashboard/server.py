@@ -199,6 +199,40 @@ def create_app(
                 "last_alert_at": agent_state.last_alert_at,
             }
 
+        @app.post("/api/alerts/test-call")
+        async def test_escalation_call():
+            from jugaadflow.agents.escalation import (
+                _generate_call_message, _make_twilio_call, TWILIO_SID,
+            )
+            from jugaadflow.agents import get_client as get_llm_client
+
+            if not TWILIO_SID:
+                return {"error": "Twilio credentials not configured"}
+
+            reason = "TEST: Simulated escalation — verifying voice call system"
+            llm_client = get_llm_client()
+            message = await _generate_call_message(llm_client, reason, metrics, queues)
+
+            try:
+                call_sid = await asyncio.to_thread(_make_twilio_call, message)
+            except Exception as e:
+                return {"error": str(e)}
+
+            agent_state.human_alert_active = True
+            agent_state.last_alert_at = time.time()
+            agent_state.alert_reason = reason
+
+            return {"status": "call_initiated", "call_sid": call_sid}
+
+    @app.post("/api/twiml/alert")
+    async def twiml_alert():
+        from xml.sax.saxutils import escape as xml_escape
+        from fastapi.responses import Response
+        from jugaadflow.agents.escalation import pending_call_message
+        msg = xml_escape(pending_call_message or "JugaadFlow alert. Please check the dashboard.")
+        twiml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="alice">{msg}</Say></Response>'
+        return Response(content=twiml, media_type="application/xml")
+
     app.state.clients = clients
     app.state.naive_mode = False
     app.state.thresholds = thresholds

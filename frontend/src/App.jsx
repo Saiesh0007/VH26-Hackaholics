@@ -1115,6 +1115,8 @@ const DEFAULT_THRESHOLDS = {
 function AIAgents() {
   const data = useWs()
   const [toggling, setToggling] = useState(false)
+  const [calling, setCalling] = useState(false)
+  const [callResult, setCallResult] = useState(null)
 
   if (!data) return <Shell><div style={{ textAlign: 'center', color: C.textMuted, paddingTop: 80 }}>Connecting...</div></Shell>
 
@@ -1126,6 +1128,19 @@ function AIAgents() {
     setToggling(true)
     await fetch(enabled ? '/api/agents/disable' : '/api/agents/enable', { method: 'POST' })
     setTimeout(() => setToggling(false), 500)
+  }
+
+  const testCall = async () => {
+    setCalling(true)
+    setCallResult(null)
+    try {
+      const res = await fetch('/api/alerts/test-call', { method: 'POST' })
+      const json = await res.json()
+      setCallResult(json.error ? `Error: ${json.error}` : 'Call initiated!')
+    } catch (e) {
+      setCallResult('Failed to reach server')
+    }
+    setTimeout(() => setCalling(false), 2000)
   }
 
   const changedKeys = Object.keys(thresholds).filter(k => {
@@ -1144,18 +1159,35 @@ function AIAgents() {
       <PageTitle eyebrow="Intelligence" title="AI Agents"
         desc="LLM-powered optimizer and evaluator that dynamically tune pipeline thresholds."
         action={
-          <button onClick={toggleAgents} disabled={toggling} style={{
-            padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-            cursor: toggling ? 'not-allowed' : 'pointer', border: 'none', fontFamily: 'inherit',
-            background: enabled ? '#FEE2E2' : C.greenLight,
-            color: enabled ? '#B91C1C' : '#15803D',
-            opacity: toggling ? 0.6 : 1,
-          }}>
-            <Brain size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-            {enabled ? 'Disable Agents' : 'Enable Agents'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button onClick={testCall} disabled={calling} style={{
+              padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              cursor: calling ? 'not-allowed' : 'pointer', border: 'none', fontFamily: 'inherit',
+              background: '#FEF3C7', color: '#B45309',
+              opacity: calling ? 0.6 : 1,
+            }}>
+              {calling ? 'Calling...' : 'Test Escalation Call'}
+            </button>
+            <button onClick={toggleAgents} disabled={toggling} style={{
+              padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              cursor: toggling ? 'not-allowed' : 'pointer', border: 'none', fontFamily: 'inherit',
+              background: enabled ? '#FEE2E2' : C.greenLight,
+              color: enabled ? '#B91C1C' : '#15803D',
+              opacity: toggling ? 0.6 : 1,
+            }}>
+              <Brain size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+              {enabled ? 'Disable Agents' : 'Enable Agents'}
+            </button>
+          </div>
         }
       />
+      {callResult && (
+        <div style={{
+          marginBottom: 16, padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          background: callResult.startsWith('Error') ? '#FEE2E2' : C.greenLight,
+          color: callResult.startsWith('Error') ? '#B91C1C' : '#15803D',
+        }}>{callResult}</div>
+      )}
 
       {/* Status cards */}
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', marginBottom: 24 }}>
