@@ -10,6 +10,13 @@ import '../../widgets/agent_status_indicator.dart';
 import '../../widgets/pressure_gauge.dart';
 import '../../widgets/animated_counter.dart';
 import '../../core/theme/app_colors.dart';
+import '../../providers/domain_provider.dart';
+import '../../models/domain_policy.dart';
+import '../../widgets/decision_explain_dialog.dart';
+import '../../widgets/replay_spike_dialog.dart';
+import '../copilot/ai_copilot_sheet.dart';
+import '../domain/create_pipeline_screen.dart';
+import '../simulator/what_if_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -123,6 +130,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.psychology_rounded, color: AppColors.primaryLight, size: 21),
+            tooltip: 'AI Copilot',
+            onPressed: () => AiCopilotSheet.show(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 21),
+            tooltip: 'What-If Predictive Simulator',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WhatIfScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.history_toggle_off_rounded, color: AppColors.textSecondary, size: 21),
+            tooltip: '20× Replay Benchmark',
+            onPressed: () => ReplaySpikeDialog.show(context),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: metricsAsync.when(
         data: (metrics) {
@@ -144,6 +172,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   error: (_, __) => const SizedBox.shrink(),
                 ),
                 const SizedBox(height: 12),
+
+                // Active Pipeline Domain Selector
+                _buildDomainSelector(context, ref),
+                const SizedBox(height: 14),
 
                 // Hero Ingestion & Multi-Tier Traffic Surge Controller
                 Container(
@@ -367,42 +399,107 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         }).toList(),
                       ),
 
-                      const SizedBox(height: 14),
-
-                      // Dedicated stress simulation button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 40,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.surfaceElevated,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: AppColors.pillRadius),
-                            elevation: 3,
-                          ),
-                          icon:
-                              const Icon(Icons.warning_amber_rounded, size: 16),
-                          label: const Text(
-                            'SIMULATE EXTREME STRESS (100,000 E/MIN)',
-                            style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.3),
-                          ),
-                          onPressed: () {
-                            ref
-                                .read(pipelineRepositoryProvider)
-                                .setTrafficRate(100000);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'Extreme stress simulation started at 100,000 events/min.'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
+                      const SizedBox(height: 16),
+                      const Text(
+                        'CHAOS & ADAPTIVE STRESS SUITE',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: AppColors.textMuted,
                         ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Chaos buttons grid/wrap
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _chaosChip(
+                            label: '1× Normal',
+                            icon: Icons.check_circle_outline_rounded,
+                            color: AppColors.healthy,
+                            onTap: () {
+                              ref.read(pipelineRepositoryProvider).recover();
+                            },
+                          ),
+                          _chaosChip(
+                            label: '2× Load',
+                            icon: Icons.trending_up_rounded,
+                            color: AppColors.primary,
+                            onTap: () {
+                              ref.read(pipelineRepositoryProvider).setTrafficRate(2000);
+                            },
+                          ),
+                          _chaosChip(
+                            label: '5× Surge',
+                            icon: Icons.speed_rounded,
+                            color: AppColors.warning,
+                            onTap: () {
+                              ref.read(pipelineRepositoryProvider).setTrafficRate(5000);
+                            },
+                          ),
+                          _chaosChip(
+                            label: '🚨 20× SPIKE',
+                            icon: Icons.bolt_rounded,
+                            color: AppColors.critical,
+                            isBold: true,
+                            onTap: () {
+                              ref.read(simulationEngineProvider).trigger20xSpike();
+                            },
+                          ),
+                          _chaosChip(
+                            label: '💥 Kill Worker',
+                            icon: Icons.cloud_off_rounded,
+                            color: AppColors.critical,
+                            onTap: () {
+                              ref.read(simulationEngineProvider).killWorker();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Chaos Injected: Worker terminated. Concurrency reduced by 50%.'),
+                                  backgroundColor: AppColors.critical,
+                                ),
+                              );
+                            },
+                          ),
+                          _chaosChip(
+                            label: '🔄 Duplicate',
+                            icon: Icons.copy_rounded,
+                            color: AppColors.primaryLight,
+                            onTap: () {
+                              ref.read(simulationEngineProvider).injectDuplicate();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Chaos Injected: Duplicate event signature filtered by idempotency guard.'),
+                                  backgroundColor: AppColors.primary,
+                                ),
+                              );
+                            },
+                          ),
+                          _chaosChip(
+                            label: '⚠️ Backpressure',
+                            icon: Icons.compress_rounded,
+                            color: AppColors.warning,
+                            onTap: () {
+                              ref.read(simulationEngineProvider).injectQueuePressure();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Chaos Injected: Artificial backpressure spike added to queue.'),
+                                  backgroundColor: AppColors.warning,
+                                ),
+                              );
+                            },
+                          ),
+                          _chaosChip(
+                            label: '⚡ 100k Stress',
+                            icon: Icons.warning_amber_rounded,
+                            color: AppColors.critical,
+                            onTap: () {
+                              ref.read(pipelineRepositoryProvider).setTrafficRate(100000);
+                            },
+                          ),
+                        ],
                       ),
 
                       if (isSpike) ...[
@@ -574,6 +671,185 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         error: (err, __) => Center(
             child: Text('Error: $err',
                 style: const TextStyle(color: AppColors.critical))),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.psychology_rounded, size: 20),
+        label: const Text('AI Copilot', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+        onPressed: () => AiCopilotSheet.show(context),
+      ),
+    );
+  }
+
+  Widget _buildDomainSelector(BuildContext context, WidgetRef ref) {
+    final domainState = ref.watch(domainProvider);
+    final active = domainState.activePolicy;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder, width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.hub_rounded, size: 15, color: AppColors.primaryLight),
+                  SizedBox(width: 6),
+                  Text(
+                    'ACTIVE PIPELINE DOMAIN',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CreatePipelineScreen()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome_rounded, size: 12, color: AppColors.primaryLight),
+                      SizedBox(width: 4),
+                      Text(
+                        'AI Architect',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primaryLight),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ...domainState.availablePolicies.map((p) {
+                  final isSelected = p.domainName.toLowerCase() == active.domainName.toLowerCase();
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(
+                        p.domainName,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                          color: isSelected ? Colors.white : AppColors.textSecondary,
+                        ),
+                      ),
+                      selected: isSelected,
+                      selectedColor: AppColors.primary,
+                      backgroundColor: AppColors.surfaceElevated,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      side: BorderSide(
+                        color: isSelected ? AppColors.primary : AppColors.cardBorder,
+                      ),
+                      onSelected: (_) {
+                        ref.read(domainProvider.notifier).switchDomain(p);
+                      },
+                    ),
+                  );
+                }),
+                ActionChip(
+                  avatar: const Icon(Icons.add_rounded, size: 14, color: AppColors.primaryLight),
+                  label: const Text('+ Create Domain', style: TextStyle(fontSize: 11, color: AppColors.primaryLight, fontWeight: FontWeight.w700)),
+                  backgroundColor: AppColors.surfaceElevated,
+                  side: const BorderSide(color: AppColors.primary, width: 0.8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreatePipelineScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.shield_rounded, size: 14, color: AppColors.healthy),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${active.domainName}: ${active.eventTypes.length} event tiers | 0 critical event loss guarantee active',
+                    style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chaosChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    bool isBold = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

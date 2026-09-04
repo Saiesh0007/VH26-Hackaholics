@@ -3,6 +3,7 @@ import '../models/event.dart';
 import '../models/pipeline_metrics.dart';
 import '../models/queue_metrics.dart';
 import '../models/pipeline_policy.dart';
+import '../models/domain_policy.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constraints/classification_constraints.dart';
 import 'adaptive_processing.dart';
@@ -13,7 +14,9 @@ class PipelineRuntime {
       const ProcessingDecisionFunction();
 
   PipelinePolicy _activePolicy = PipelinePolicy.defaultPolicy();
+  DomainPolicy _activeDomainPolicy = DomainPolicy.ecommerce();
   int _trafficRatePerMin = AppConstants.normalTrafficRate;
+  bool _workerKilled = false;
 
   // Internal Queue Depths
   final Map<WorkloadPriority, int> _queueDepths = {
@@ -32,6 +35,7 @@ class PipelineRuntime {
   int _eventCounter = 1000;
 
   PipelinePolicy get activePolicy => _activePolicy;
+  DomainPolicy get activeDomainPolicy => _activeDomainPolicy;
   int get trafficRate => _trafficRatePerMin;
   List<PipelineEvent> get recentEvents => List.unmodifiable(_recentEvents);
   Map<WorkloadPriority, ProcessingScore> get lastRoutingScores =>
@@ -43,6 +47,47 @@ class PipelineRuntime {
 
   void setPolicy(PipelinePolicy policy) {
     _activePolicy = policy;
+  }
+
+  void setDomainPolicy(DomainPolicy domainPolicy) {
+    _activeDomainPolicy = domainPolicy;
+    _activePolicy = domainPolicy.toPipelinePolicy();
+  }
+
+  void killWorker() {
+    _workerKilled = true;
+    Future.delayed(const Duration(seconds: 12), () {
+      _workerKilled = false;
+    });
+  }
+
+  void injectQueuePressure() {
+    for (final priority in _queueDepths.keys) {
+      final add = priority.isCritical ? 150 : 800;
+      _queueDepths[priority] = min(AppConstants.maxQueueCapacity, (_queueDepths[priority] ?? 0) + add);
+    }
+  }
+
+  void injectDuplicateEvent() {
+    _eventCounter++;
+    final event = PipelineEvent(
+      id: '#DUP-IDEMPOTENT-$_eventCounter',
+      type: _activeDomainPolicy.eventTypes.isNotEmpty ? _activeDomainPolicy.eventTypes.first.name : 'Payment',
+      priority: WorkloadPriority.p0Payment,
+      timestamp: DateTime.now(),
+      status: EventStatus.processed,
+      strategy: ProcessingStrategy.stream,
+      latencyMs: 12.5,
+      queueTimeMs: 2.0,
+      processingTimeMs: 10.5,
+      payloadSizeBytes: 1024,
+      workerId: 'worker-idempotency-filter',
+      decisionReason: 'IDEMPOTENCY SAFEGUARD: Duplicate signature detected. Skipped duplicate state mutation.',
+    );
+    _recentEvents.insert(0, event);
+    if (_recentEvents.length > AppConstants.maxEventHistorySize) {
+      _recentEvents.removeLast();
+    }
   }
 
   /// Simulation Step - Executed on periodic tick (e.g. 1 sec tick)
@@ -129,6 +174,9 @@ class PipelineRuntime {
           min(16, max(policy.workerCount, 2 + (depth / 500).ceil()));
       int workerCapacity = scaledWorkerCount *
           (routedStrategy == ProcessingStrategy.batch ? policy.batchSize : 15);
+      if (_workerKilled) {
+        workerCapacity = max(1, (workerCapacity * 0.45).round());
+      }
 
       int processed = min(depth, workerCapacity);
       _queueDepths[priority] = depth - processed;
@@ -146,14 +194,15 @@ class PipelineRuntime {
       }
 
       if (processed > 0 && _random.nextDouble() > 0.4) {
+        final domainName = _getDomainEventNameForPriority(priority);
         _addRecentEvent(
           priority: priority,
           status: EventStatus.processed,
           strategy: routedStrategy,
           latencyMs: latency,
           decisionReason: priority.isCritical
-              ? 'Critical workload + immediate latency target guaranteed by SafetyGuard'
-              : 'Processed under weighted routing (${routedStrategy.name.toUpperCase()})',
+              ? 'Critical event ($domainName) guaranteed 0-loss stream by SafetyGuard'
+              : 'Processed under adaptive ($domainName: ${routedStrategy.name.toUpperCase()})',
         );
       }
     }
@@ -246,20 +295,31 @@ class PipelineRuntime {
     );
   }
 
+  String _getDomainEventNameForPriority(WorkloadPriority priority) {
+    for (final e in _activeDomainPolicy.eventTypes) {
+      if (e.toWorkloadPriority() == priority) {
+        return e.name;
+      }
+    }
+    return priority.displayName;
+  }
+
   void _addRecentEvent({
     required WorkloadPriority priority,
     required EventStatus status,
     required ProcessingStrategy strategy,
     required double latencyMs,
     required String decisionReason,
+    String? eventTypeName,
   }) {
     _eventCounter++;
     final prefix = priority.displayName
         .substring(0, min(3, priority.displayName.length))
         .toUpperCase();
+    final typeName = eventTypeName ?? _getDomainEventNameForPriority(priority);
     final event = PipelineEvent(
       id: '#$prefix-$_eventCounter',
-      type: priority.displayName,
+      type: typeName,
       priority: priority,
       timestamp: DateTime.now(),
       status: status,

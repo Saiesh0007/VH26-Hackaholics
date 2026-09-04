@@ -124,9 +124,52 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Current Active Provider: ${settings.dataSource == DataSourceMode.mock ? 'MockPipelineRepository' : 'ApiPipelineRepository (http://localhost:8000)'}',
+                  'Active Endpoint: ${settings.backendUrl}',
                   style: const TextStyle(
                       color: AppColors.textSecondary, fontSize: 11),
+                ),
+                const SizedBox(height: 14),
+                const Text('BACKEND API URL (PC IP)',
+                    style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  initialValue: settings.backendUrl,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'http://192.168.137.156:8000/api/v1',
+                    hintStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    filled: true,
+                    fillColor: AppColors.surfaceElevated,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                    ),
+                  ),
+                  onChanged: (val) => notifier.setBackendUrl(val.trim()),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: [
+                    ActionChip(
+                      label: const Text('Wi-Fi (192.168.137.156)', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                      backgroundColor: AppColors.surfaceElevated,
+                      onPressed: () => notifier.setBackendUrl('http://192.168.137.156:8000/api/v1'),
+                    ),
+                    ActionChip(
+                      label: const Text('USB / Localhost', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                      backgroundColor: AppColors.surfaceElevated,
+                      onPressed: () => notifier.setBackendUrl('http://localhost:8000/api/v1'),
+                    ),
+                  ],
                 ),
               ],
             ),

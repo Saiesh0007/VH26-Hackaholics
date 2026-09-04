@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/event.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/priority_badge.dart';
+import '../../widgets/decision_explain_dialog.dart';
 
 class EventTraceScreen extends StatelessWidget {
   final PipelineEvent event;
@@ -137,6 +138,20 @@ class EventTraceScreen extends StatelessWidget {
                   Text(
                     '"${event.decisionReason}"',
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.psychology_rounded, size: 18),
+                      label: const Text('EXPLAIN THIS DECISION (AI / RULES)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
+                      onPressed: () => DecisionExplainDialog.show(context, event: event),
+                    ),
                   ),
                 ],
               ),

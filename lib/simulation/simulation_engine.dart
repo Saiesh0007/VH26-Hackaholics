@@ -8,6 +8,7 @@ import '../models/processing_decision.dart';
 import '../models/agent_state.dart';
 import '../models/incident.dart';
 import '../models/simulation_config.dart';
+import '../models/domain_policy.dart';
 
 class SimulationEngine {
   final PipelineRuntime runtime = PipelineRuntime();
@@ -118,6 +119,72 @@ class SimulationEngine {
         severity: IncidentSeverity.info,
         timestamp: DateTime.now(),
         status: 'RESOLVED',
+      ),
+    );
+  }
+
+  DomainPolicy get activeDomainPolicy => runtime.activeDomainPolicy;
+
+  void setDomainPolicy(DomainPolicy policy) {
+    runtime.setDomainPolicy(policy);
+    _incidents.insert(
+      0,
+      SystemIncident(
+        id: 'INC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+        title: '⚡ DOMAIN ACTIVATED: ${policy.domainName.toUpperCase()}',
+        description:
+            'Engine switched to domain policy "${policy.domainName}" (${policy.eventTypes.length} event types).',
+        severity: IncidentSeverity.info,
+        timestamp: DateTime.now(),
+        status: 'ACTIVE',
+      ),
+    );
+  }
+
+  void killWorker() {
+    runtime.killWorker();
+    _incidents.insert(
+      0,
+      SystemIncident(
+        id: 'INC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+        title: '💥 WORKER FAILURE (CHAOS INJECTED)',
+        description:
+            'Simulated node failure: Worker instance terminated. Concurrency reduced.',
+        severity: IncidentSeverity.warning,
+        timestamp: DateTime.now(),
+        status: 'ACTIVE',
+      ),
+    );
+  }
+
+  void injectDuplicate() {
+    runtime.injectDuplicateEvent();
+    _incidents.insert(
+      0,
+      SystemIncident(
+        id: 'INC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+        title: '🔄 DUPLICATE EVENT SIGNATURE INJECTED',
+        description:
+            'Simulated network replay: Idempotency filter engaged, duplicate rejected.',
+        severity: IncidentSeverity.info,
+        timestamp: DateTime.now(),
+        status: 'RESOLVED',
+      ),
+    );
+  }
+
+  void injectQueuePressure() {
+    runtime.injectQueuePressure();
+    _incidents.insert(
+      0,
+      SystemIncident(
+        id: 'INC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+        title: '⚠️ BACKPRESSURE SPIKE INJECTED',
+        description:
+            'Simulated downstream saturation: Queue depth artificially elevated.',
+        severity: IncidentSeverity.warning,
+        timestamp: DateTime.now(),
+        status: 'ACTIVE',
       ),
     );
   }

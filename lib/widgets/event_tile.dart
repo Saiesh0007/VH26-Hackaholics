@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../core/theme/app_colors.dart';
 import 'priority_badge.dart';
+import 'decision_explain_dialog.dart';
 
 class EventTile extends StatelessWidget {
   final PipelineEvent event;
   final VoidCallback onTap;
+  final VoidCallback? onExplain;
 
   const EventTile({
     super.key,
     required this.event,
     required this.onTap,
+    this.onExplain,
   });
 
   @override
@@ -33,6 +36,13 @@ class EventTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
+      onLongPress: () {
+        if (onExplain != null) {
+          onExplain!();
+        } else {
+          DecisionExplainDialog.show(context, event: event);
+        }
+      },
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
