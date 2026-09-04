@@ -40,6 +40,7 @@ AdaptQ replaces static, dumb FIFO queues with an **Autonomous Priority-Aware Pip
 | **3. Adaptive Batch-vs-Stream Engine** | Hybrid runtime: streams high-priority events at ultra-low latency (<50ms) while micro-batching P1/P2/P3 under load to maximize I/O efficiency and worker throughput. | [`flowmind_agent.dart`](file:///c:/vh/lib/agent/flowmind_agent.dart)<br>[`simulation_engine.dart`](file:///c:/vh/lib/simulation/simulation_engine.dart) |
 | **4. Intelligent Deferral & Auto-Drain** | Non-critical P2 queues are deferred during surge conditions into spillover storage and automatically drained into active workers once traffic normalizes. | [`simulation_engine.dart`](file:///c:/vh/lib/simulation/simulation_engine.dart) |
 | **5. Dual-Agent System (Optimizer + Evaluator)** | **Agent 1 (Optimizer)** tunes constraints based on metrics and logs. **Agent 2 (Evaluator)** audits the optimizer, compares before/after metrics against checkpoints, and **autonomously rolls back** if the outcome is suboptimal. | [`optimizer_agent.dart`](file:///c:/vh/lib/agent/optimizer_agent.dart)<br>[`evaluator_agent.dart`](file:///c:/vh/lib/agent/evaluator_agent.dart)<br>[`safety_guard.dart`](file:///c:/vh/lib/agent/safety_guard.dart) |
+| **6. Bland AI Emergency Voice Escalation** | Outbound AI phone calling agent that dials the on-call SRE's real phone whenever unrecoverable edge cases occur that autonomous agents cannot resolve (e.g., repeated rollbacks, downstream sink failure). | [`bland_ai_service.dart`](file:///c:/vh/lib/services/bland_ai_service.dart)<br>[`incidents_screen.dart`](file:///c:/vh/lib/features/incidents/incidents_screen.dart) |
 | **+ Extra Polish: Command Center UI & CLI Demo** | Cross-platform Flutter UI (Dark Charcoal `#090D16` + Warm Orange `#FF7700`), floating voice assistant button, interactive 5-stage pipeline topology stepper, live `fl_chart` telemetry, and terminal CLI runner. | [`pipeline_screen.dart`](file:///c:/vh/lib/features/pipeline/pipeline_screen.dart)<br>[`insights_screen.dart`](file:///c:/vh/lib/features/insights/insights_screen.dart)<br>[`scripts/demo.dart`](file:///c:/vh/scripts/demo.dart) |
 
 ---
@@ -177,6 +178,11 @@ c:\vh\
 ### Q5: *"Can this integrate into existing enterprise infrastructure like Kafka, Flink, or Spark?"*
 * **The Killer Answer:**  
   *"Yes. Notice our repository layer: we designed `PipelineRepository` as an abstract interface. Today our UI and CLI run on `MockPipelineRepository` and `SimulationEngine` for reproducible live testing. In production, this cleanly drops in as a proxy or control plane over Kafka topics (e.g., dedicated partitions for `topic.p0.payments` vs `topic.p3.logs`), dynamically tuning Flink windowing parameters on the fly via REST or gRPC."*
+
+### Q6: *"What happens during an unrecoverable edge case that your autonomous agents cannot resolve?"*
+* **The Killer Answer:**  
+  *"If consecutive agent rollbacks fail, or if a downstream payment gateway experiences an unhandled hard-crash during peak surge, the system autonomously triggers our **Bland AI Emergency Voice Dispatcher**.  
+  Bland AI automatically dials the on-call Lead SRE engineer's physical phone, delivers a spoken real-time telemetry brief (P0 latency, traffic volume, failure reason), and requests immediate human authorization for emergency intervention or partition shedding. It bridges autonomous AI self-healing with real-world human-in-the-loop SRE dispatching."*
 
 ---
 

@@ -96,6 +96,49 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+
+          // Bland AI Calling Integration Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.phone_in_talk_rounded, color: AppColors.primary, size: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'BLAND AI EMERGENCY CALL AGENT',
+                      style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Automated outbound phone dispatch to On-Call SRE when autonomous FlowMind agents encounter unrecoverable edge cases.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'API Endpoint: POST https://api.bland.ai/v1/calls\nFallback: Realistic demo voice simulator active.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 9.5),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

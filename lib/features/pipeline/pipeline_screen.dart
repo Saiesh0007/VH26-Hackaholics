@@ -7,7 +7,9 @@ import '../../core/theme/app_colors.dart';
 import '../../models/event.dart';
 
 class PipelineScreen extends ConsumerStatefulWidget {
-  const PipelineScreen({super.key});
+  final VoidCallback? onOpenDrawer;
+
+  const PipelineScreen({super.key, this.onOpenDrawer});
 
   @override
   ConsumerState<PipelineScreen> createState() => _PipelineScreenState();
@@ -26,6 +28,14 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: widget.onOpenDrawer != null
+            ? IconButton(
+                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+                tooltip: 'Open Drawer Menu',
+                onPressed: widget.onOpenDrawer,
+              )
+            : null,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

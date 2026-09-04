@@ -11,45 +11,45 @@ class AppTheme {
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: const ColorScheme.dark(
-        primary: AppColors.info,
-        secondary: AppColors.agent,
+        primary: AppColors.primary,
+        secondary: AppColors.primaryLight,
         surface: AppColors.surface,
         error: AppColors.critical,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
+        onPrimary: Color(0xFF091020),
+        onSecondary: Color(0xFF091020),
         onSurface: AppColors.textPrimary,
         onError: Colors.white,
       ),
       textTheme: GoogleFonts.interTextTheme(baseTextTheme).copyWith(
-        displayLarge: TextStyle(
+        displayLarge: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
           letterSpacing: -1.0,
         ),
-        displayMedium: TextStyle(
+        displayMedium: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
           letterSpacing: -0.5,
         ),
-        headlineMedium: TextStyle(
+        headlineMedium: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,
         ),
-        titleLarge: TextStyle(
+        titleLarge: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,
         ),
-        titleMedium: TextStyle(
+        titleMedium: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w500,
         ),
-        bodyLarge: TextStyle(
+        bodyLarge: const TextStyle(
           color: AppColors.textPrimary,
         ),
-        bodyMedium: TextStyle(
+        bodyMedium: const TextStyle(
           color: AppColors.textSecondary,
         ),
-        labelLarge: TextStyle(
+        labelLarge: const TextStyle(
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w600,
         ),
@@ -58,7 +58,7 @@ class AppTheme {
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: AppColors.cardBorder, width: 1),
         ),
       ),
@@ -70,7 +70,7 @@ class AppTheme {
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.info,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textMuted,
         type: BottomNavigationBarType.fixed,
         elevation: 8,

@@ -12,9 +12,13 @@ import '../../widgets/pressure_gauge.dart';
 import '../../widgets/animated_counter.dart';
 import '../../core/theme/app_colors.dart';
 import '../voice/voice_assistant_dialog.dart';
+import '../incidents/incidents_screen.dart';
+import '../../services/bland_ai_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
-  const DashboardScreen({super.key});
+  final VoidCallback? onOpenDrawer;
+
+  const DashboardScreen({super.key, this.onOpenDrawer});
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -49,7 +53,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Color _getSurgeColor(int rate) {
     if (rate <= 1000) return AppColors.healthy;
     if (rate <= 20000) return AppColors.primary;
-    if (rate <= 60000) return const Color(0xFFFF8800);
+    if (rate <= 60000) return AppColors.primaryLight;
     return AppColors.critical;
   }
 
@@ -65,59 +69,101 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         automaticallyImplyLeading: false,
+        leading: widget.onOpenDrawer != null
+            ? Padding(
+                padding: const EdgeInsets.only(left: 10),
+                child: IconButton(
+                  icon: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.cardBorder, width: 0.8),
+                    ),
+                    child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 20),
+                  ),
+                  tooltip: 'Open Drawer Menu',
+                  onPressed: widget.onOpenDrawer,
+                ),
+              )
+            : null,
         title: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.black,
+                borderRadius: BorderRadius.circular(9),
+                color: AppColors.surface,
                 border: Border.all(color: AppColors.cardBorder, width: 1.2),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x33FF7700),
-                    blurRadius: 12,
+                    color: Color(0x3060A5FA),
+                    blurRadius: 10,
                     spreadRadius: 1,
                   ),
                 ],
               ),
-              child: ClipOval(
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                  ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
             const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AdaptQ',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    color: AppColors.textPrimary,
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AdaptQ',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                Text(
-                  'Autonomous Pipeline Intelligence',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                  Text(
+                    'Autonomous Pipeline Intelligence',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
-        actions: const [],
+        actions: [
+          // Quick Access to Incident Center & Bland AI Voice Dispatch
+          IconButton(
+            icon: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.cardBorder, width: 0.8),
+              ),
+              child: const Icon(Icons.notifications_active_outlined, size: 18, color: AppColors.primary),
+            ),
+            tooltip: 'Incident Center & Bland AI',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const IncidentsScreen()),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: metricsAsync.when(
         data: (metrics) {
@@ -324,8 +370,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         }).toList(),
                       ),
 
+                      const SizedBox(height: 14),
+
+                      // Dedicated Edge Case Trigger Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF991B1B),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: AppColors.pillRadius),
+                            elevation: 3,
+                          ),
+                          icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
+                          label: const Text(
+                            '⚡ SIMULATE UNRECOVERABLE EDGE CASE (AUTO-CALL)',
+                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                          ),
+                          onPressed: () {
+                            ref.read(pipelineRepositoryProvider).setTrafficRate(100000);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                backgroundColor: Color(0xFF991B1B),
+                                content: Text('🚨 100,000 e/min Edge Case triggered! Escalating to Bland AI...'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
                       if (isSpike) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         SizedBox(
                           width: double.infinity,
                           height: 38,

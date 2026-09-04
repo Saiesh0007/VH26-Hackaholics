@@ -8,7 +8,9 @@ import '../../models/pipeline_metrics.dart';
 import '../../widgets/animated_counter.dart';
 
 class InsightsScreen extends ConsumerStatefulWidget {
-  const InsightsScreen({super.key});
+  final VoidCallback? onOpenDrawer;
+
+  const InsightsScreen({super.key, this.onOpenDrawer});
 
   @override
   ConsumerState<InsightsScreen> createState() => _InsightsScreenState();
@@ -145,6 +147,14 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
+        automaticallyImplyLeading: false,
+        leading: widget.onOpenDrawer != null
+            ? IconButton(
+                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+                tooltip: 'Open Drawer Menu',
+                onPressed: widget.onOpenDrawer,
+              )
+            : null,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

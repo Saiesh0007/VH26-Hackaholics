@@ -1,6 +1,7 @@
 import '../models/pipeline_metrics.dart';
 import '../models/pipeline_policy.dart';
 import '../simulation/pipeline_runtime.dart';
+import '../services/bland_ai_service.dart';
 
 /// Represents a stable checkpoint before the Optimizer Agent modifies constraints.
 class StateCheckpoint {
@@ -24,6 +25,7 @@ enum EvaluationStatus {
   evaluating,
   approved,
   rolledBack,
+  escalatedToBlandAi,
 }
 
 class EvaluationAuditReport {
@@ -36,6 +38,7 @@ class EvaluationAuditReport {
   final double postQueuePressure;
   final String verdictDetails;
   final bool didRollback;
+  final bool didEscalatePhoneCall;
 
   const EvaluationAuditReport({
     required this.id,
@@ -47,6 +50,7 @@ class EvaluationAuditReport {
     required this.postQueuePressure,
     required this.verdictDetails,
     required this.didRollback,
+    this.didEscalatePhoneCall = false,
   });
 }
 
@@ -55,9 +59,16 @@ class EvaluationAuditReport {
 /// with the previous system checkpoint. If the proposed constraints degraded
 /// system performance or breached critical business SLAs, it automatically
 /// reverts the runtime to the previous state.
+///
+/// EDGE CASE ESCALATION:
+/// If repeated rollbacks occur or the pipeline deteriorates into an unrecoverable
+/// state, EvaluatorAgent autonomously triggers a phone call to the on-call engineer
+/// via Bland AI.
 class EvaluatorAgent {
+  final BlandAiService blandAiService = BlandAiService();
   StateCheckpoint? _activeCheckpoint;
   int _ticksObserved = 0;
+  int _consecutiveRollbacks = 0;
   static const int _observationWindowTicks = 2; // Evaluate after 2-3 seconds
 
   EvaluationStatus _status = EvaluationStatus.idle;
@@ -67,6 +78,7 @@ class EvaluatorAgent {
   EvaluationStatus get status => _status;
   String get latestVerdict => _latestVerdict;
   StateCheckpoint? get activeCheckpoint => _activeCheckpoint;
+  int get consecutiveRollbacks => _consecutiveRollbacks;
   List<EvaluationAuditReport> get auditHistory => List.unmodifiable(_auditHistory);
 
   /// Capture a state checkpoint right before Optimizer modifies constraints.
@@ -110,13 +122,30 @@ class EvaluatorAgent {
 
     // Check if the business metrics suggested by Optimizer were suboptimal
     if (isCriticalSlaBreached || isDegrading) {
+      _consecutiveRollbacks++;
       // SUBOPTIMAL: Revert back to original state!
       runtime.setPolicy(_activeCheckpoint!.policy);
       _status = EvaluationStatus.rolledBack;
 
-      final reason = isCriticalSlaBreached
-          ? 'CRITICAL REVERT: P0 Latency reached ${post.p0LatencyMs.toStringAsFixed(1)}ms (exceeded 75ms ceiling). Auto-reverted to ${_activeCheckpoint!.id}.'
-          : 'SUBOPTIMAL REVERT: P0 latency degraded by +${latencyDelta.toStringAsFixed(1)}ms under new constraints. Auto-reverted to ${_activeCheckpoint!.id}.';
+      bool didEscalate = false;
+      // UNRECOVERABLE EDGE CASE ESCALATION TO BLAND AI:
+      // If consecutive rollbacks fail or system hits severe edge case condition
+      if (_consecutiveRollbacks >= 2 || post.eventRatePerMin >= 80000 || (post.p0LatencyMs > 120.0 && post.queuePressurePercentage > 80.0)) {
+        _status = EvaluationStatus.escalatedToBlandAi;
+        didEscalate = true;
+        blandAiService.triggerEmergencyCall(
+          incidentTitle: 'UNRECOVERABLE PIPELINE EDGE CASE',
+          reason: 'Autonomous agent mitigations reached capacity limit under extreme conditions (${post.eventRatePerMin} e/min). P0 Latency: ${post.p0LatencyMs.toStringAsFixed(1)}ms.',
+          p0LatencyMs: post.p0LatencyMs,
+          trafficRate: post.eventRatePerMin,
+        );
+      }
+
+      final reason = didEscalate
+          ? '🚨 BLAND AI EMERGENCY CALL DISPATCHED: Unrecoverable edge case detected. Calling on-call engineer at ${blandAiService.onCallPhoneNumber ?? "+18005550199"}.'
+          : (isCriticalSlaBreached
+              ? 'CRITICAL REVERT: P0 Latency reached ${post.p0LatencyMs.toStringAsFixed(1)}ms (exceeded 75ms ceiling). Auto-reverted to ${_activeCheckpoint!.id}.'
+              : 'SUBOPTIMAL REVERT: P0 latency degraded by +${latencyDelta.toStringAsFixed(1)}ms under new constraints. Auto-reverted to ${_activeCheckpoint!.id}.');
 
       _latestVerdict = reason;
 
@@ -125,13 +154,14 @@ class EvaluatorAgent {
         EvaluationAuditReport(
           id: 'AUD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
           timestamp: DateTime.now(),
-          status: EvaluationStatus.rolledBack,
+          status: _status,
           preP0LatencyMs: pre.p0LatencyMs,
           postP0LatencyMs: post.p0LatencyMs,
           preQueuePressure: pre.queuePressurePercentage,
           postQueuePressure: post.queuePressurePercentage,
           verdictDetails: reason,
           didRollback: true,
+          didEscalatePhoneCall: didEscalate,
         ),
       );
 
@@ -139,6 +169,7 @@ class EvaluatorAgent {
       return true; // Indicates a rollback was executed
     } else {
       // OPTIMAL: Optimizer's constraints improved or stabilized the pipeline!
+      _consecutiveRollbacks = 0;
       _status = EvaluationStatus.approved;
       final improvementDetails = 'OPTIMAL APPROVED: System stabilized. P0 Latency ${post.p0LatencyMs.toStringAsFixed(1)}ms (SLA preserved), Queue Pressure ${post.queuePressurePercentage.toStringAsFixed(1)}%.';
       _latestVerdict = improvementDetails;
@@ -155,6 +186,7 @@ class EvaluatorAgent {
           postQueuePressure: post.queuePressurePercentage,
           verdictDetails: improvementDetails,
           didRollback: false,
+          didEscalatePhoneCall: false,
         ),
       );
 

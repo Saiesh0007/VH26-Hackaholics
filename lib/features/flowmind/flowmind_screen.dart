@@ -9,7 +9,9 @@ import '../../core/theme/app_colors.dart';
 import 'policy_history_screen.dart';
 
 class FlowMindScreen extends ConsumerWidget {
-  const FlowMindScreen({super.key});
+  final VoidCallback? onOpenDrawer;
+
+  const FlowMindScreen({super.key, this.onOpenDrawer});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,6 +22,14 @@ class FlowMindScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: onOpenDrawer != null
+            ? IconButton(
+                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+                tooltip: 'Open Drawer Menu',
+                onPressed: onOpenDrawer,
+              )
+            : null,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

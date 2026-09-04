@@ -5,6 +5,8 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
 import 'features/main_navigation_screen.dart';
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: AdaptQApp()));
@@ -16,6 +18,7 @@ class AdaptQApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: rootNavigatorKey,
       title: 'AdaptQ',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
@@ -71,10 +74,10 @@ class _SplashScreenState extends State<SplashScreen> {
             center: Alignment(0.0, -0.2),
             radius: 1.2,
             colors: [
-              Color(0xFF24150A), // Ambient warm amber/orange glow from reference
+              Color(0xFF13284F), // Ambient soft pastel blue glow
               AppColors.background,
             ],
-            stops: [0.0, 0.7],
+            stops: [0.0, 0.75],
           ),
         ),
         child: SafeArea(
@@ -92,26 +95,25 @@ class _SplashScreenState extends State<SplashScreen> {
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(28),
+                        color: AppColors.surface,
                         border: Border.all(color: AppColors.cardBorder, width: 1.5),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x40FF7700),
+                            color: Color(0x3560A5FA),
                             blurRadius: 36,
                             spreadRadius: 4,
+                            offset: Offset(0, 8),
                           ),
                         ],
                       ),
-                      child: ClipOval(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            width: 104,
-                            height: 104,
-                            fit: BoxFit.contain,
-                          ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(26),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),

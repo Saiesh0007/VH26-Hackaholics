@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'events/live_events_screen.dart';
@@ -7,10 +8,12 @@ import 'insights/insights_screen.dart';
 import 'simulator/simulator_screen.dart';
 import 'benchmark/benchmark_screen.dart';
 import 'incidents/incidents_screen.dart';
+import 'incidents/emergency_call_dialog.dart';
 import 'shedding/load_shedding_screen.dart';
 import 'settings/settings_screen.dart';
 import 'demo/demo_banner.dart';
 import 'voice/voice_assistant_dialog.dart';
+import '../services/bland_ai_service.dart';
 import '../core/theme/app_colors.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -22,18 +25,54 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  StreamSubscription<BlandAiCallRecord>? _emergencyCallSub;
+  bool _isCallDialogShowing = false;
 
-  final List<Widget> _pages = const [
-    DashboardScreen(),
-    LiveEventsScreen(),
-    FlowMindScreen(),
-    PipelineScreen(),
-    InsightsScreen(),
-  ];
+  void _openDrawer() {
+    _scaffoldKey.currentState?.openDrawer();
+  }
+
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      DashboardScreen(onOpenDrawer: _openDrawer),
+      LiveEventsScreen(onOpenDrawer: _openDrawer),
+      FlowMindScreen(onOpenDrawer: _openDrawer),
+      PipelineScreen(onOpenDrawer: _openDrawer),
+      InsightsScreen(onOpenDrawer: _openDrawer),
+    ];
+
+    // Global listener for automatic incoming emergency calls
+    _emergencyCallSub = BlandAiService().onEmergencyCall.listen((record) {
+      if (!_isCallDialogShowing && mounted) {
+        _isCallDialogShowing = true;
+        EmergencyCallDialog.show(
+          context,
+          incidentTitle: 'UNRECOVERABLE PIPELINE EDGE CASE',
+          reason: record.reason,
+          p0LatencyMs: 148.5,
+          trafficRate: 100000,
+        ).then((_) {
+          _isCallDialogShowing = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _emergencyCallSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.background,
       drawer: Drawer(
         backgroundColor: AppColors.surface,
@@ -51,20 +90,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(12),
+                      color: AppColors.surface,
                       border: Border.all(color: AppColors.cardBorder, width: 1.2),
-                      boxShadow: AppColors.orangeGlowShadow,
+                      boxShadow: AppColors.blueGlowShadow,
                     ),
-                    child: ClipOval(
-                      child: Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          width: 38,
-                          height: 38,
-                          fit: BoxFit.contain,
-                        ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 46,
+                        height: 46,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -101,6 +138,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   _buildDrawerTile(
                     icon: Icons.dashboard_rounded,
                     title: 'Command Center',
+                    subtitle: 'Real-time telemetry & surge control',
                     isSelected: _currentIndex == 0,
                     onTap: () {
                       setState(() => _currentIndex = 0);
@@ -110,6 +148,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   _buildDrawerTile(
                     icon: Icons.psychology_rounded,
                     title: 'FlowMind Control Center',
+                    subtitle: 'Optimizer & Evaluator Dual-Agent',
                     isSelected: _currentIndex == 2,
                     onTap: () {
                       setState(() => _currentIndex = 2);
@@ -119,6 +158,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   _buildDrawerTile(
                     icon: Icons.tune_rounded,
                     title: 'What-If Simulator',
+                    subtitle: 'Simulate 20×-100× surge conditions',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const SimulatorScreen()));
@@ -127,6 +167,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   _buildDrawerTile(
                     icon: Icons.stacked_bar_chart_rounded,
                     title: 'Naive vs Adaptive Benchmark',
+                    subtitle: 'Direct SLA & latency comparison',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const BenchmarkScreen()));
@@ -135,6 +176,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   _buildDrawerTile(
                     icon: Icons.filter_alt_rounded,
                     title: 'Controlled Load Shedding',
+                    subtitle: 'Zero-drop P0, deterministic P3 drop',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const LoadSheddingScreen()));
@@ -143,6 +185,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   _buildDrawerTile(
                     icon: Icons.warning_amber_rounded,
                     title: 'Incident Center',
+                    subtitle: 'Bland AI Voice Dispatch & In-App Call',
+                    badge: 'BLAND AI',
+                    badgeColor: AppColors.primary,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const IncidentsScreen()));
@@ -155,6 +200,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   _buildDrawerTile(
                     icon: Icons.settings_outlined,
                     title: 'Settings & Backend Config',
+                    subtitle: 'Thresholds, API keys & SLAs',
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
@@ -251,6 +297,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget _buildDrawerTile({
     required IconData icon,
     required String title,
+    String? subtitle,
+    String? badge,
+    Color? badgeColor,
     bool isSelected = false,
     required VoidCallback onTap,
   }) {
@@ -262,12 +311,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         leading: Container(
           width: 36,
           height: 36,
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
             shape: BoxShape.circle,
+            border: Border.all(
+              color: isSelected ? AppColors.primaryLight : AppColors.cardBorder,
+              width: 0.8,
+            ),
           ),
           child: Icon(
             icon,
@@ -280,9 +334,40 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           style: TextStyle(
             color: isSelected ? AppColors.primary : AppColors.textPrimary,
             fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
           ),
         ),
+        subtitle: subtitle != null
+            ? Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 10,
+                ),
+              )
+            : null,
+        trailing: badge != null
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (badgeColor ?? AppColors.primary).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: (badgeColor ?? AppColors.primary).withOpacity(0.6),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  badge,
+                  style: TextStyle(
+                    color: badgeColor ?? AppColors.primary,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              )
+            : null,
         onTap: onTap,
       ),
     );

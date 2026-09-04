@@ -7,7 +7,9 @@ import '../../core/theme/app_colors.dart';
 import 'event_trace_screen.dart';
 
 class LiveEventsScreen extends ConsumerWidget {
-  const LiveEventsScreen({super.key});
+  final VoidCallback? onOpenDrawer;
+
+  const LiveEventsScreen({super.key, this.onOpenDrawer});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,6 +18,14 @@ class LiveEventsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: onOpenDrawer != null
+            ? IconButton(
+                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
+                tooltip: 'Open Drawer Menu',
+                onPressed: onOpenDrawer,
+              )
+            : null,
         title: const Text('LIVE EVENT STREAM', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       ),
       body: Column(

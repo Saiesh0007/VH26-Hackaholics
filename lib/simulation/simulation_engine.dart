@@ -8,6 +8,7 @@ import '../models/processing_decision.dart';
 import '../models/agent_state.dart';
 import '../models/incident.dart';
 import '../models/simulation_config.dart';
+import '../services/bland_ai_service.dart';
 
 class SimulationEngine {
   final PipelineRuntime runtime = PipelineRuntime();
@@ -23,27 +24,20 @@ class SimulationEngine {
   final StreamController<List<ProcessingDecision>> _decisionsController = StreamController<List<ProcessingDecision>>.broadcast();
   final StreamController<AgentStateSummary> _agentStateController = StreamController<AgentStateSummary>.broadcast();
 
+  final List<SystemIncident> _incidents = [];
+
   Stream<PipelineMetrics> get metricsStream => _metricsController.stream;
   Stream<List<PriorityQueueMetrics>> get queuesStream => _queuesController.stream;
   Stream<List<PipelineEvent>> get eventsStream => _eventsController.stream;
   Stream<List<ProcessingDecision>> get decisionsStream => _decisionsController.stream;
   Stream<AgentStateSummary> get agentStateStream => _agentStateController.stream;
+  List<SystemIncident> get incidents => List.unmodifiable(_incidents);
 
   bool get isRunning => _isRunning;
-  SimulationConfig get config => _config;
 
-  final List<SystemIncident> _incidents = [
-    SystemIncident(
-      id: 'INC-101',
-      title: 'CRITICAL EVENT SHIELD ACTIVE',
-      description: 'Immutable P0 Payment and Order safety rules active.',
-      severity: IncidentSeverity.info,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-      status: 'HEALTHY',
-    ),
-  ];
-
-  List<SystemIncident> get incidents => List.unmodifiable(_incidents);
+  SimulationEngine() {
+    startSimulation();
+  }
 
   void startSimulation() {
     if (_isRunning) return;
@@ -79,21 +73,40 @@ class SimulationEngine {
     );
   }
 
+  void triggerEdgeCase() {
+    setTrafficRate(100000);
+  }
+
   void setTrafficRate(int rate) {
     runtime.setTrafficRate(rate);
     if (rate > 1000) {
       final mult = (rate / 1000).round();
+      final isEdgeCase = rate >= 80000;
       _incidents.insert(
         0,
         SystemIncident(
           id: 'INC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
-          title: '🔥 ${mult}× TRAFFIC SURGE ($rate e/min)',
-          description: 'Traffic adjusted dynamically to $rate events/min.',
+          title: isEdgeCase ? '🚨 UNRECOVERABLE EDGE CASE ($rate e/min)' : '🔥 ${mult}× TRAFFIC SURGE ($rate e/min)',
+          description: isEdgeCase
+              ? 'Extreme stress traffic surge. Evaluator Agent escalating to Bland AI SRE dispatch.'
+              : 'Traffic adjusted dynamically to $rate events/min.',
           severity: rate >= 40000 ? IncidentSeverity.critical : IncidentSeverity.warning,
           timestamp: DateTime.now(),
           status: 'ACTIVE',
         ),
       );
+
+      // If extreme stress edge case, automatically trigger Bland AI call!
+      if (isEdgeCase) {
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          BlandAiService().triggerEmergencyCall(
+            incidentTitle: 'CRITICAL ${rate ~/ 1000}× TRAFFIC SURGE ($rate e/min)',
+            reason: 'Traffic rate reached $rate e/min exceeding autonomous mitigation thresholds. P0 payment latency at risk. Escalating to SRE engineer.',
+            p0LatencyMs: 148.5,
+            trafficRate: rate,
+          );
+        });
+      }
     } else {
       recoverToNormal();
     }
