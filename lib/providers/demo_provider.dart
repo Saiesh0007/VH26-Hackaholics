@@ -99,8 +99,8 @@ class DemoNotifier extends StateNotifier<DemoState> {
             ),
             DemoStep(
               stepNumber: 9,
-              title: 'STEP 9: NAIVE VS PULSEFLOW BENCHMARK',
-              narration: 'Compare Naive processing (100% failure during spike) vs PulseFlow (0 P0 events lost).',
+              title: 'STEP 9: NAIVE VS ADAPTQ BENCHMARK',
+              narration: 'Compare Naive processing (100% failure during spike) vs AdaptQ (0 P0 events lost).',
               actionLabel: 'FINISH DEMO',
             ),
           ],

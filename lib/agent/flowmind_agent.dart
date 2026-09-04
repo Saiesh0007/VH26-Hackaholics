@@ -41,13 +41,14 @@ class FlowMindAgent {
     _logTimeline('OBSERVE: Traffic ${metrics.eventRatePerMin} events/min | Load ${metrics.systemLoadPercentage.toInt()}% | P0 Latency ${metrics.p0LatencyMs.toInt()}ms');
 
     // Step 1: Detect Anomaly / Condition Assessment
+    final multiplier = (metrics.eventRatePerMin / 1000).round();
     if (metrics.eventRatePerMin >= 15000) {
       _currentState = FlowMindState.warning;
-      _currentCondition = 'CRITICAL SURGE: 20× Traffic Spike Active (${metrics.eventRatePerMin} e/min)';
+      _currentCondition = 'CRITICAL SURGE: ${multiplier}× Traffic Surge Active (${metrics.eventRatePerMin} e/min)';
       _currentObjective = 'PROTECT P0 PAYMENTS/ORDERS; Mitigate queue saturation';
     } else if (metrics.eventRatePerMin > 3000) {
       _currentState = FlowMindState.analyzing;
-      _currentCondition = 'ELEVATED TRAFFIC: Moderate surge (${metrics.eventRatePerMin} e/min)';
+      _currentCondition = 'ELEVATED TRAFFIC: ${multiplier}× Moderate surge (${metrics.eventRatePerMin} e/min)';
       _currentObjective = 'Prevent queue pressure spillover into P0 queues';
     } else {
       if (_currentState != FlowMindState.stable) {

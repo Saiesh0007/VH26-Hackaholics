@@ -5,11 +5,15 @@ import '../core/theme/app_colors.dart';
 class CriticalShield extends StatelessWidget {
   final bool isExtremeSpike;
   final int criticalLost;
+  final int deferredCount;
+  final int shedCount;
 
   const CriticalShield({
     super.key,
     required this.isExtremeSpike,
     required this.criticalLost,
+    this.deferredCount = 0,
+    this.shedCount = 0,
   });
 
   @override
@@ -106,23 +110,23 @@ class CriticalShield extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildShieldItem(
-                  label: 'P0 PAYMENTS',
-                  value: '100% PROTECTED',
-                  color: AppColors.healthy,
-                ),
-              ),
-              Expanded(
-                child: _buildShieldItem(
-                  label: 'P0 ORDERS',
-                  value: '100% PROTECTED',
-                  color: AppColors.healthy,
-                ),
-              ),
-              Expanded(
-                child: _buildShieldItem(
-                  label: 'CRITICAL LOST',
-                  value: '$criticalLost EVENTS',
+                  label: 'P0 LOST',
+                  value: '$criticalLost',
                   color: criticalLost > 0 ? AppColors.critical : AppColors.healthy,
+                ),
+              ),
+              Expanded(
+                child: _buildShieldItem(
+                  label: 'P2 DEFERRED',
+                  value: '$deferredCount',
+                  color: deferredCount > 0 ? AppColors.warning : AppColors.textSecondary,
+                ),
+              ),
+              Expanded(
+                child: _buildShieldItem(
+                  label: 'P3 SHED',
+                  value: '$shedCount',
+                  color: shedCount > 0 ? AppColors.info : AppColors.textSecondary,
                 ),
               ),
             ],

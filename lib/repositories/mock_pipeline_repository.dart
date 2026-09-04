@@ -61,6 +61,11 @@ class MockPipelineRepository implements PipelineRepository {
   }
 
   @override
+  Future<void> setTrafficRate(int ratePerMin) async {
+    simulationEngine.setTrafficRate(ratePerMin);
+  }
+
+  @override
   Future<void> applyPolicy(PipelinePolicy policy) async {
     simulationEngine.runtime.setPolicy(policy);
   }

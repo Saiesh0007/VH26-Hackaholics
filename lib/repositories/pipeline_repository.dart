@@ -18,6 +18,7 @@ abstract class PipelineRepository {
 
   Future<void> triggerSpike();
   Future<void> recover();
+  Future<void> setTrafficRate(int ratePerMin);
   Future<void> applyPolicy(PipelinePolicy policy);
   Future<void> rollbackPolicy();
   Future<void> updateSimulationConfig(SimulationConfig config);

@@ -13,228 +13,462 @@ import '../../widgets/animated_counter.dart';
 import '../../core/theme/app_colors.dart';
 import '../voice/voice_assistant_dialog.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  double? _draggedSliderValue;
+
+  static const List<int> _snapPoints = [1000, 20000, 40000, 60000, 80000, 100000];
+
+  int _snapToNearest(double raw) {
+    int best = _snapPoints[0];
+    double minDiff = (raw - best).abs();
+    for (final pt in _snapPoints) {
+      final diff = (raw - pt).abs();
+      if (diff < minDiff) {
+        minDiff = diff;
+        best = pt;
+      }
+    }
+    return best;
+  }
+
+  String _getMultiplierLabel(int rate) {
+    if (rate <= 1000) return '1× Baseline';
+    final mult = (rate / 1000).round();
+    if (rate >= 100000) return '${mult}× Extreme Stress';
+    if (rate >= 60000) return '${mult}× Black Friday';
+    return '${mult}× Surge';
+  }
+
+  Color _getSurgeColor(int rate) {
+    if (rate <= 1000) return AppColors.healthy;
+    if (rate <= 20000) return AppColors.primary;
+    if (rate <= 60000) return const Color(0xFFFF8800);
+    return AppColors.critical;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final metricsAsync = ref.watch(metricsStreamProvider);
     final queuesAsync = ref.watch(queuesStreamProvider);
     final agentStateAsync = ref.watch(agentStateStreamProvider);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
           children: [
-            Text(
-              'PULSEFLOW',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: AppColors.textPrimary,
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black,
+                border: Border.all(color: AppColors.cardBorder, width: 1.2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x33FF7700),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
-            Text(
-              'Adaptive AI Data Pipeline Command Center',
-              style: TextStyle(
-                fontSize: 10,
-                color: AppColors.textSecondary,
-              ),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AdaptQ',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  'Autonomous Pipeline Intelligence',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.mic, color: AppColors.agent),
-            tooltip: 'Ask FlowMind',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => const VoiceAssistantDialog(),
-              );
-            },
+          // Ask FlowMind Voice Assistant Button
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => const VoiceAssistantDialog(),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.cardBorder, width: 0.8),
+                ),
+                child: const Icon(Icons.mic_rounded, size: 18, color: AppColors.primary),
+              ),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.play_circle_fill, color: AppColors.info),
-            tooltip: 'Demo Mode',
-            onPressed: () {
-              ref.read(demoProvider.notifier).startDemo();
-            },
+          // Demo Mode Trigger Button
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: InkWell(
+              onTap: () {
+                ref.read(demoProvider.notifier).startDemo();
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.cardBorder, width: 0.8),
+                ),
+                child: const Icon(Icons.play_arrow_rounded, size: 20, color: AppColors.textPrimary),
+              ),
+            ),
           ),
         ],
       ),
       body: metricsAsync.when(
         data: (metrics) {
-          final isSpike = metrics.eventRatePerMin > 5000;
+          final isSpike = metrics.eventRatePerMin > 1000;
+          final currentTraffic = _draggedSliderValue?.round() ?? metrics.eventRatePerMin;
+          final activeColor = _getSurgeColor(currentTraffic);
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Agent Status Header Banner
+                // Top Agent Status Chip
                 agentStateAsync.when(
                   data: (agentState) => AgentStatusIndicator(state: agentState.state),
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
 
-                // Hero Metric Banner (EVENT RATE)
+                // Hero Ingestion & Multi-Tier Traffic Surge Controller
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppColors.cardRadiusLarge,
                     border: Border.all(
-                      color: isSpike ? AppColors.critical.withOpacity(0.7) : AppColors.cardBorder,
-                      width: isSpike ? 1.5 : 1.0,
+                      color: isSpike ? activeColor.withOpacity(0.8) : AppColors.cardBorder,
+                      width: isSpike ? 1.4 : 0.8,
                     ),
+                    boxShadow: isSpike
+                        ? [
+                            BoxShadow(
+                              color: activeColor.withOpacity(0.18),
+                              blurRadius: 28,
+                              spreadRadius: 2,
+                            ),
+                          ]
+                        : AppColors.cardShadow,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                isSpike ? '🔥 20× SURGE RATE' : 'EVENT INGESTION RATE',
-                                style: TextStyle(
-                                  color: isSpike ? AppColors.critical : AppColors.textMuted,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.8,
-                                ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isSpike ? activeColor.withOpacity(0.16) : AppColors.surfaceElevated,
+                              borderRadius: AppColors.pillRadius,
+                              border: Border.all(
+                                color: isSpike ? activeColor.withOpacity(0.4) : AppColors.cardBorder,
+                                width: 0.8,
                               ),
-                            ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isSpike ? Icons.bolt_rounded : Icons.sync_rounded,
+                                  size: 13,
+                                  color: isSpike ? activeColor : AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  isSpike ? 'SURGE LOAD INGESTION' : 'REAL-TIME INGRESS CONDUIT',
+                                  style: TextStyle(
+                                    color: isSpike ? activeColor : AppColors.textSecondary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          AnimatedCounter(
-                            value: metrics.eventRatePerMin,
-                            suffix: ' events/min',
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isSpike ? activeColor.withOpacity(0.15) : AppColors.surfaceElevated,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _getMultiplierLabel(currentTraffic),
+                              style: TextStyle(
+                                color: isSpike ? activeColor : AppColors.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      AnimatedCounter(
+                        value: currentTraffic,
+                        suffix: ' e/min',
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isSpike
+                            ? 'Dynamic FlowMind backpressure & prioritization active.'
+                            : 'Pipeline healthy. All workloads streaming within target SLAs.',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Multi-Tier Traffic Slider (1k to 100k)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'TRAFFIC VELOCITY LEVER',
                             style: TextStyle(
-                              color: isSpike ? AppColors.critical : AppColors.textPrimary,
-                              fontSize: 28,
+                              color: AppColors.textMuted,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          Text(
+                            '$currentTraffic e/min',
+                            style: TextStyle(
+                              color: activeColor,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            isSpike ? 'Adaptive FlowMind Control Active' : 'Normal Baseline Operations',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 11,
-                            ),
-                          ),
                         ],
                       ),
-                      // Spike / Recover CTA Action Buttons
-                      Column(
-                        children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isSpike ? AppColors.healthy : AppColors.critical,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      const SizedBox(height: 4),
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: activeColor,
+                          inactiveTrackColor: AppColors.surfaceElevated,
+                          thumbColor: Colors.white,
+                          overlayColor: activeColor.withOpacity(0.2),
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                          trackHeight: 6,
+                        ),
+                        child: Slider(
+                          value: currentTraffic.toDouble().clamp(1000.0, 100000.0),
+                          min: 1000,
+                          max: 100000,
+                          divisions: 5,
+                          onChanged: (val) {
+                            setState(() {
+                              _draggedSliderValue = _snapToNearest(val).toDouble();
+                            });
+                          },
+                          onChangeEnd: (val) {
+                            final targetRate = _snapToNearest(val);
+                            setState(() {
+                              _draggedSliderValue = null;
+                            });
+                            ref.read(pipelineRepositoryProvider).setTrafficRate(targetRate);
+                          },
+                        ),
+                      ),
+
+                      // Discrete Snap Chips (1k, 20k, 40k, 60k, 80k, 100k)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: _snapPoints.map((pt) {
+                          final isSelected = currentTraffic == pt;
+                          final label = pt >= 1000 ? '${(pt / 1000).toInt()}k' : '$pt';
+                          return InkWell(
+                            onTap: () {
+                              ref.read(pipelineRepositoryProvider).setTrafficRate(pt);
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isSelected ? activeColor.withOpacity(0.2) : AppColors.surfaceElevated,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected ? activeColor : AppColors.cardBorder,
+                                  width: isSelected ? 1.2 : 0.6,
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                                  fontSize: 10,
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      if (isSpike) ...[
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.healthy,
+                              side: const BorderSide(color: AppColors.healthy, width: 1.0),
+                              shape: RoundedRectangleBorder(borderRadius: AppColors.pillRadius),
+                            ),
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: const Text(
+                              'RESET TO 1,000 BASELINE',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                             onPressed: () {
-                              final repo = ref.read(pipelineRepositoryProvider);
-                              if (isSpike) {
-                                repo.recover();
-                              } else {
-                                repo.triggerSpike();
-                              }
+                              ref.read(pipelineRepositoryProvider).recover();
                             },
-                            child: Text(
-                              isSpike ? '🟢 RECOVER' : '🔥 20× SPIKE',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
 
-                // Predictive Load Warning Banner if pressure building
-                if (metrics.queuePressurePercentage > 30) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.warning.withOpacity(0.4)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'FlowMind predicts P3 queue saturation if current traffic rate continues.',
-                            style: const TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
-                // Critical Event Shield
+                // Critical Event Shield HUD
                 CriticalShield(
                   isExtremeSpike: isSpike,
                   criticalLost: metrics.criticalEventsLost,
+                  deferredCount: metrics.totalDeferredCount,
+                  shedCount: metrics.totalShedCount,
                 ),
                 const SizedBox(height: 16),
+
+                // Section Title - Telemetry
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'REAL-TIME PIPELINE TELEMETRY',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    Text(
+                      'SLA PROTECTED',
+                      style: TextStyle(
+                        color: AppColors.healthy,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
 
                 // Telemetry Metrics Grid
                 GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 1.7,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.55,
                   children: [
                     MetricCard(
                       title: 'System Load',
                       value: metrics.systemLoadPercentage.toInt(),
                       unit: '%',
-                      subtitle: 'Worker Pool CPU Utilization',
+                      subtitle: 'Worker CPU Pool',
                       valueColor: metrics.systemLoadPercentage > 80 ? AppColors.warning : AppColors.healthy,
-                      icon: Icons.memory,
+                      icon: Icons.memory_rounded,
                     ),
                     MetricCard(
-                      title: 'Queue Pressure',
+                      title: 'Backpressure',
                       value: metrics.queuePressurePercentage.toInt(),
                       unit: '%',
-                      subtitle: 'Backpressure Gauge',
-                      valueColor: metrics.queuePressurePercentage > 50 ? AppColors.warning : AppColors.info,
-                      icon: Icons.compress,
+                      subtitle: 'Buffer Resistance',
+                      valueColor: metrics.queuePressurePercentage > 50 ? AppColors.warning : AppColors.primary,
+                      icon: Icons.compress_rounded,
                     ),
                     MetricCard(
                       title: 'Throughput',
                       value: metrics.throughputPerSec,
                       unit: 'e/s',
-                      subtitle: 'Active Processing Speed',
-                      valueColor: AppColors.info,
-                      icon: Icons.speed,
+                      subtitle: 'Processing Speed',
+                      valueColor: AppColors.primary,
+                      icon: Icons.speed_rounded,
                     ),
                     MetricCard(
                       title: 'P0 Latency',
                       value: metrics.p0LatencyMs.toInt(),
                       unit: 'ms',
-                      subtitle: 'Payment/Order Target < 60ms',
+                      subtitle: 'Target < 50 ms',
                       valueColor: AppColors.healthy,
-                      icon: Icons.timer,
+                      icon: Icons.timer_rounded,
                     ),
                   ],
                 ),
@@ -242,41 +476,54 @@ class DashboardScreen extends ConsumerWidget {
 
                 // Backpressure Gauge
                 BackpressureGauge(queuePressurePercentage: metrics.queuePressurePercentage),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // Priority Queue Cards Header
-                const Text(
-                  'PRIORITY QUEUE WORKLOADS',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
+                // Priority Queue Workloads Header
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'PRIORITY ROUTING MATRIX',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    Text(
+                      'TIERED HOL PROTECTION',
+                      style: TextStyle(
+                        color: AppColors.primaryLight,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
 
-                // 4 Priority Queue Cards
+                // Priority Queue Cards
                 queuesAsync.when(
                   data: (queues) {
                     return Column(
                       children: queues
                           .map((q) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.only(bottom: 10),
                                 child: PriorityQueueCard(queueMetrics: q),
                               ))
                           .toList(),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
               ],
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, __) => Center(child: Text('Error: $err')),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, __) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.critical))),
       ),
     );
   }

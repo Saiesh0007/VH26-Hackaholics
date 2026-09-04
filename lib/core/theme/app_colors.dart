@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
+  // Brand Primary & Accent
+  static const Color primary = Color(0xFFFF7700); // Warm energetic orange
+  static const Color primaryLight = Color(0xFFFF9E40);
+  static const BorderRadius pillRadius = BorderRadius.all(Radius.circular(28));
+  static const BorderRadius cardRadius = BorderRadius.all(Radius.circular(16));
+  static const BorderRadius cardRadiusLarge = BorderRadius.all(Radius.circular(24));
+  static const List<BoxShadow> cardShadow = [
+    BoxShadow(color: Color(0x33000000), blurRadius: 16, offset: Offset(0, 4)),
+  ];
+  static const List<BoxShadow> orangeGlowShadow = [
+    BoxShadow(color: Color(0x40FF7700), blurRadius: 16, spreadRadius: 1),
+  ];
+
   // Backgrounds - Near black & dark elevated surfaces
   static const Color background = Color(0xFF090D16);
   static const Color surface = Color(0xFF111827);

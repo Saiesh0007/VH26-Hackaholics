@@ -79,6 +79,26 @@ class SimulationEngine {
     );
   }
 
+  void setTrafficRate(int rate) {
+    runtime.setTrafficRate(rate);
+    if (rate > 1000) {
+      final mult = (rate / 1000).round();
+      _incidents.insert(
+        0,
+        SystemIncident(
+          id: 'INC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+          title: '🔥 ${mult}× TRAFFIC SURGE ($rate e/min)',
+          description: 'Traffic adjusted dynamically to $rate events/min.',
+          severity: rate >= 40000 ? IncidentSeverity.critical : IncidentSeverity.warning,
+          timestamp: DateTime.now(),
+          status: 'ACTIVE',
+        ),
+      );
+    } else {
+      recoverToNormal();
+    }
+  }
+
   void recoverToNormal() {
     runtime.setTrafficRate(1000);
     _incidents.insert(

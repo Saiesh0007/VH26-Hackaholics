@@ -1,8 +1,8 @@
-# PULSEFLOW: Adaptive AI Data Pipeline Command Center
+# AdaptQ: Adaptive AI Data Pipeline Command Center
 
 > *"Process what matters. Defer what can wait."*
 
-PULSEFLOW is a production-style Flutter mobile control center for an autonomous, AI-managed data pipeline capable of surviving a **20× traffic surge** (1,000 → 20,000+ events/min) without dropping critical P0 workloads (Payments and Orders).
+AdaptQ is a production-style Flutter command center for an autonomous, AI-managed data pipeline capable of surviving a **20× traffic surge** (1,000 → 20,000+ events/min) without dropping critical P0 workloads (Payments and Orders).
 
 ---
 
@@ -98,6 +98,25 @@ flutter run
 ### Running Unit Tests
 ```bash
 flutter test
+```
+
+### ⚡ Interactive Terminal Live Demo (Pitch & Presentation Mode)
+Run the real-time ANSI terminal demonstration showcasing the 20× surge attack, FlowMind AI reasoning, SafetyGuard invariant validation, and benchmark scorecard:
+
+**On Windows (PowerShell):**
+```powershell
+.\scripts\demo.ps1
+```
+
+**On Linux / macOS / Git Bash:**
+```bash
+chmod +x scripts/demo.sh
+./scripts/demo.sh
+```
+
+**Or directly via Dart:**
+```bash
+dart run scripts/demo.dart
 ```
 
 ---

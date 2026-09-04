@@ -8,7 +8,7 @@ class BenchmarkScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('NAIVE VS PULSEFLOW BENCHMARK', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        title: const Text('NAIVE VS ADAPTQ BENCHMARK', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -54,7 +54,7 @@ class BenchmarkScreen extends StatelessWidget {
                       children: [
                         Expanded(flex: 3, child: Text('METRIC', style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold))),
                         Expanded(flex: 2, child: Text('NAIVE PIPELINE', style: TextStyle(color: AppColors.critical, fontSize: 10, fontWeight: FontWeight.bold))),
-                        Expanded(flex: 2, child: Text('PULSEFLOW AI', style: TextStyle(color: AppColors.healthy, fontSize: 10, fontWeight: FontWeight.bold))),
+                        Expanded(flex: 2, child: Text('ADAPTQ AI', style: TextStyle(color: AppColors.healthy, fontSize: 10, fontWeight: FontWeight.bold))),
                       ],
                     ),
                   ),
