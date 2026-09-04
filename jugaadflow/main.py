@@ -1,9 +1,6 @@
 import asyncio
 import logging
 import uvicorn
-from dotenv import load_dotenv
-
-load_dotenv()
 
 from jugaadflow.generator.sources import ALL_SOURCES
 from jugaadflow.pipeline.queues import create_queues

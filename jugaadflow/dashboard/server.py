@@ -3,7 +3,7 @@ import json
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -12,8 +12,6 @@ from jugaadflow.pipeline.queues import Queues
 from jugaadflow.pipeline.strategy import Strategy
 from jugaadflow.metrics.store import Metrics
 from jugaadflow.pipeline.decision_engine import LEVEL_NAMES
-from jugaadflow.auth.router import router as auth_router
-from jugaadflow.auth.deps import get_current_user, require_role
 
 STATIC_DIR = Path(__file__).parent / "static"
 FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
@@ -31,7 +29,6 @@ def create_app(
     rate_multiplier: list[float],
 ) -> FastAPI:
     app = FastAPI(title="JugaadFlow Dashboard")
-    app.include_router(auth_router)
     clients: list[WebSocket] = []
 
     if FRONTEND_DIST.exists():
@@ -63,17 +60,17 @@ def create_app(
                 clients.remove(ws)
 
     @app.post("/api/spike")
-    async def trigger_spike(user: dict = Depends(require_role("admin"))):
+    async def trigger_spike():
         rate_multiplier[0] = 20.0
         return {"status": "spike", "rate_multiplier": 20.0}
 
     @app.post("/api/normal")
-    async def trigger_normal(user: dict = Depends(require_role("admin"))):
+    async def trigger_normal():
         rate_multiplier[0] = 1.0
         return {"status": "normal", "rate_multiplier": 1.0}
 
     @app.post("/api/rate")
-    async def set_rate(req: RateRequest, user: dict = Depends(require_role("admin"))):
+    async def set_rate(req: RateRequest):
         multiplier = max(0.1, min(100.0, req.events_per_min / BASE_EVENTS_PER_MIN))
         rate_multiplier[0] = multiplier
         return {
@@ -82,12 +79,12 @@ def create_app(
         }
 
     @app.post("/api/mode/naive")
-    async def set_naive(user: dict = Depends(require_role("admin"))):
+    async def set_naive():
         app.state.naive_mode = True
         return {"mode": "naive"}
 
     @app.post("/api/mode/adaptive")
-    async def set_adaptive(user: dict = Depends(require_role("admin"))):
+    async def set_adaptive():
         app.state.naive_mode = False
         return {"mode": "adaptive"}
 
