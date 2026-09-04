@@ -63,3 +63,37 @@ body { margin: 0; min-width: 320px; }
 
 /* ─── Landing page tile hover ────────────────────────────────────────── */
 .tile:hover { transform: scale(1.06) rotate(-1deg); }
+
+/* ─── New Landing Page Enhancements ──────────────────────────────────── */
+.nav-link-hover:hover {
+  color: var(--accent) !important;
+}
+
+.primary-btn-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.2) !important;
+}
+
+.secondary-btn-hover:hover {
+  background: var(--bg) !important;
+  transform: translateY(-2px);
+}
+
+.cta-button-hover:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 40px rgba(245, 180, 0, 0.4) !important;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.06) !important;
+  border-color: rgba(232, 68, 10, 0.2) !important;
+}
+
+.stat-card {
+  transition: transform 0.3s, background 0.3s;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255,255,255,0.06) !important;
+}

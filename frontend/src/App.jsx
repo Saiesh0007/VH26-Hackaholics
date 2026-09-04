@@ -1131,144 +1131,229 @@ function TileGrid() {
 
 function LandingPage() {
   return (
-    <div style={{ fontFamily: "'Inter', ui-sans-serif, sans-serif", background: '#fff', minHeight: '100vh', WebkitFontSmoothing: 'antialiased' }}>
+    <div style={{ fontFamily: "'Inter', ui-sans-serif, sans-serif", background: '#fff', minHeight: '100vh', WebkitFontSmoothing: 'antialiased', overflowX: 'hidden' }}>
 
       {/* ── Announcement banner ── */}
-      <div style={{ background: C.accent, padding: '11px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+      <div style={{ background: `linear-gradient(90deg, ${C.accent} 0%, #ff5e1a 100%)`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
         <span style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
           AdaptQ — Adaptive event pipeline that never drops a critical event
         </span>
-        <Link to="/admin" style={{ color: '#fff', fontSize: 12, fontWeight: 800, textDecoration: 'underline', whiteSpace: 'nowrap' }}>
-          Open Dashboard →
+        <Link to="/admin" style={{ color: '#fff', fontSize: 12, fontWeight: 800, textDecoration: 'underline', whiteSpace: 'nowrap', textUnderlineOffset: 2 }}>
+          Open Dashboard &rarr;
         </Link>
       </div>
 
       {/* ── Navbar ── */}
       <nav style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 48px', borderBottom: `1px solid ${C.border}`, background: '#fff',
+        padding: '16px 48px', borderBottom: `1px solid ${C.border}88`,
+        background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         position: 'sticky', top: 0, zIndex: 100,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.02)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
           {/* Logo */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <div style={{ width: 32, height: 32, background: '#0D0D0D', borderRadius: 6, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900 }}>J</div>
-            <span style={{ fontSize: 16, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.04em' }}>AdaptQ</span>
+            <div style={{ width: 34, height: 34, background: '#0D0D0D', borderRadius: 8, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 14, fontWeight: 900, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>J</div>
+            <span style={{ fontSize: 18, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.04em' }}>AdaptQ</span>
           </Link>
           {/* Nav links */}
-          <div style={{ display: 'flex', gap: 28 }}>
+          <div style={{ display: 'flex', gap: 32 }}>
             {['Pipeline', 'Traffic', 'Simulation', 'Benchmarks'].map(item => (
-              <Link key={item} to={`/admin/${item.toLowerCase()}`} style={{ fontSize: 14, color: '#555', fontWeight: 500, textDecoration: 'none' }}>{item}</Link>
+              <Link key={item} className="nav-link-hover" to={`/admin/${item.toLowerCase()}`} style={{ fontSize: 14, color: '#444', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>{item}</Link>
             ))}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link to="/admin" style={{ fontSize: 14, color: '#555', fontWeight: 500, textDecoration: 'none' }}>Log in</Link>
-          <Link to="/admin" style={{
-            background: C.amber, color: '#0D0D0D', padding: '9px 20px',
-            borderRadius: 8, fontSize: 13, fontWeight: 800, textDecoration: 'none',
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <Link to="/admin" style={{ fontSize: 14, color: '#444', fontWeight: 600, textDecoration: 'none' }}>Log in</Link>
+          <Link className="cta-button-hover" to="/admin" style={{
+            background: C.amber, color: '#0D0D0D', padding: '10px 22px',
+            borderRadius: 8, fontSize: 14, fontWeight: 800, textDecoration: 'none',
+            boxShadow: '0 4px 12px rgba(245, 180, 0, 0.25)', transition: 'transform 0.2s, box-shadow 0.2s',
           }}>Enter Dashboard</Link>
         </div>
       </nav>
 
       {/* ── Hero ── */}
-      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 48 }}>
-        <div style={{ maxWidth: 540 }} className="fade-up">
+      <section style={{ 
+        position: 'relative', maxWidth: 1200, margin: '0 auto', padding: '120px 48px 100px', 
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 48,
+      }}>
+        {/* Decorative background glows */}
+        <div style={{ position: 'absolute', top: '10%', left: '-10%', width: 600, height: 600, background: `radial-gradient(circle, ${C.accent}15 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '10%', right: '-5%', width: 500, height: 500, background: `radial-gradient(circle, ${C.amber}15 0%, transparent 70%)`, pointerEvents: 'none' }} />
+
+        <div style={{ maxWidth: 580, position: 'relative', zIndex: 10 }} className="fade-up">
           {/* Status pill */}
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: C.accentLight, border: `1px solid ${C.accent}44`,
-            borderRadius: 20, padding: '5px 14px', marginBottom: 28,
+            display: 'inline-flex', alignItems: 'center', gap: 10,
+            background: 'rgba(255, 243, 240, 0.8)', backdropFilter: 'blur(8px)', border: `1px solid ${C.accent}44`,
+            borderRadius: 24, padding: '6px 16px', marginBottom: 32,
+            boxShadow: '0 2px 12px rgba(232, 68, 10, 0.08)'
           }}>
-            <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent, display: 'inline-block' }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>Live pipeline · 3,400+ events/min baseline</span>
+            <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent, display: 'inline-block' }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>Live pipeline · 3,400+ events/min baseline</span>
           </div>
 
-          <h1 style={{ fontSize: 66, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.04em', lineHeight: 1.04, margin: 0 }}>
-            Zero critical<br />events dropped.<br />Ever.
+          <h1 style={{ fontSize: 72, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.04em', lineHeight: 1.05, margin: 0 }}>
+            Zero critical<br />events dropped.<br />
+            <span style={{ background: `linear-gradient(90deg, ${C.accent}, ${C.amber})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Ever.</span>
           </h1>
-          <p style={{ marginTop: 24, fontSize: 17, color: '#555', lineHeight: 1.65, maxWidth: 440 }}>
-            AdaptQ automatically classifies, routes, and protects your most important events — even when traffic spikes 10×.
+          <p style={{ marginTop: 28, fontSize: 18, color: '#555', lineHeight: 1.7, maxWidth: 480, fontWeight: 400 }}>
+            AdaptQ intelligently classifies, routes, and protects your most important revenue-generating events — seamlessly scaling logic when traffic spikes 20&times;.
           </p>
-          <div style={{ marginTop: 36, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <Link to="/admin" style={{ background: '#0D0D0D', color: '#fff', padding: '14px 28px', borderRadius: 10, fontSize: 14, fontWeight: 800, textDecoration: 'none' }}>
+          <div style={{ marginTop: 42, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <Link to="/admin" className="primary-btn-hover" style={{ 
+              background: '#0D0D0D', color: '#fff', padding: '16px 32px', borderRadius: 10, 
+              fontSize: 15, fontWeight: 800, textDecoration: 'none', transition: 'all 0.2s',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
+            }}>
               Open Dashboard
             </Link>
-            <Link to="/admin/simulation" style={{ background: '#fff', color: '#0D0D0D', padding: '14px 28px', borderRadius: 10, fontSize: 14, fontWeight: 700, textDecoration: 'none', border: `2px solid ${C.border}` }}>
-              Try Simulator →
+            <Link to="/admin/simulation" className="secondary-btn-hover" style={{ 
+              background: '#fff', color: '#0D0D0D', padding: '16px 32px', borderRadius: 10, 
+              fontSize: 15, fontWeight: 700, textDecoration: 'none', border: `2px solid ${C.border}`,
+              transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8
+            }}>
+              Try Simulator <ArrowRight size={18} />
             </Link>
           </div>
         </div>
-        <div style={{ flexShrink: 0 }}>
-          <TileGrid />
+        <div style={{ flexShrink: 0, position: 'relative', zIndex: 10 }}>
+          <div style={{ 
+            padding: 32, background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(20px)',
+            border: `1px solid ${C.border}`, borderRadius: 24, boxShadow: '0 24px 48px rgba(0,0,0,0.05)' 
+          }}>
+            <TileGrid />
+          </div>
         </div>
       </section>
 
       {/* ── Stats bar ── */}
-      <div style={{ background: '#0D0D0D', padding: '48px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32 }}>
+      <div style={{ background: '#0D0D0D', padding: '64px 48px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, position: 'relative', zIndex: 5 }}>
           {[
             { value: '3,400+', label: 'Events / minute', sub: 'at baseline load' },
             { value: '0',      label: 'P0 events lost',  sub: 'invariant maintained' },
             { value: '4',      label: 'Escalation tiers', sub: 'adaptive response levels' },
             { value: '8',      label: 'Worker threads',   sub: 'strict priority routing' },
           ].map(s => (
-            <div key={s.label}>
-              <p style={{ fontSize: 42, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.03em' }}>{s.value}</p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: C.amber, margin: '4px 0 0' }}>{s.label}</p>
-              <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>{s.sub}</p>
+            <div key={s.label} className="stat-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
+              <p style={{ fontSize: 48, fontWeight: 900, color: '#fff', margin: 0, letterSpacing: '-0.03em' }}>{s.value}</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: C.amber, margin: '8px 0 0' }}>{s.label}</p>
+              <p style={{ fontSize: 13, color: '#888', margin: '6px 0 0' }}>{s.sub}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Features ── */}
-      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 48px' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', color: C.accent, margin: 0 }}>How it works</p>
-        <h2 style={{ fontSize: 44, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.03em', margin: '8px 0 48px' }}>Adaptive by design.</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-          {[
-            { num: '01', title: 'Classify & route', color: C.accent, desc: 'Every event is tagged with a priority tier — Payment, Inventory, Click, or Log — and instantly routed to the right queue.' },
-            { num: '02', title: 'Adapt under load',  color: C.amber,  desc: 'When Tier 1 latency rises, the system escalates through 4 levels: Normal → Elevated → Critical → Emergency, shedding lower-priority work.' },
-            { num: '03', title: 'Never drop P0',     color: C.green,  desc: 'Critical events (payments, orders) are guaranteed. The system enforces a hard invariant: zero P0 events shed, regardless of load.' },
-          ].map(f => (
-            <div key={f.num} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 16, padding: 32 }}>
-              <div style={{ width: 44, height: 44, background: f.color + '18', borderRadius: 12, display: 'grid', placeItems: 'center', marginBottom: 20 }}>
-                <span style={{ fontSize: 17, fontWeight: 900, color: f.color }}>{f.num}</span>
+      {/* ── Use Case Section (NEW) ── */}
+      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 48px 60px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 64 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', color: C.accent, margin: 0 }}>Built for Scale</p>
+          <h2 style={{ fontSize: 42, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.03em', margin: '12px 0 0' }}>The E-Commerce Flash Sale</h2>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 64, alignItems: 'center' }}>
+          <div>
+            <h3 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 16px', letterSpacing: '-0.02em' }}>When the spike hits, the pipeline doesn't panic. It does <span style={{ color: C.accent }}>jugaad</span>.</h3>
+            <p style={{ fontSize: 16, color: '#555', lineHeight: 1.7, margin: '0 0 24px' }}>
+              Imagine an e-commerce platform receiving a mixed event stream: orders, payments, inventory updates, user activity (clicks/views), and application logs.
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <li style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: C.greenLight, color: C.green, display: 'grid', placeItems: 'center' }}><Activity size={20} /></div>
+                <div><strong style={{ display: 'block', fontSize: 15 }}>Normal Load</strong><span style={{ fontSize: 14, color: '#666' }}>~1,000 events/minute handled comfortably.</span></div>
+              </li>
+              <li style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#FEE2E2', color: '#DC2626', display: 'grid', placeItems: 'center' }}><Zap size={20} /></div>
+                <div><strong style={{ display: 'block', fontSize: 15 }}>Flash Sale Spike</strong><span style={{ fontSize: 14, color: '#666' }}>~20,000 events/minute — a sudden 20&times; surge.</span></div>
+              </li>
+            </ul>
+            <p style={{ fontSize: 16, color: '#555', lineHeight: 1.7, margin: 0, padding: 20, background: C.bg, borderRadius: 12, borderLeft: `4px solid ${C.amber}` }}>
+              <strong>The Core Philosophy:</strong> Not all events are equal. A payment failing to process is a business problem. A log line arriving 30 seconds late is fine. AdaptQ recognizes this difference and acts accordingly.
+            </p>
+          </div>
+          
+          <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 24, padding: 40, boxShadow: '0 20px 40px rgba(0,0,0,0.04)' }}>
+            <h4 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 20px', color: '#0D0D0D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Traffic Distribution</h4>
+            {[
+              { type: 'Payment', share: '4%', tier: 'Tier 1', color: C.red, desc: 'Critical, never dropped' },
+              { type: 'Order', share: '9%', tier: 'Tier 1', color: C.red, desc: 'Critical, never dropped' },
+              { type: 'Inventory', share: '13%', tier: 'Tier 2', color: C.amber, desc: 'Important, can batch/defer' },
+              { type: 'Clicks', share: '28%', tier: 'Tier 3', color: '#6366F1', desc: 'Useful, can defer/shed' },
+              { type: 'Logs', share: '46%', tier: 'Tier 4', color: C.green, desc: 'Noise, shed freely under load' },
+            ].map(item => (
+              <div key={item.type} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 0', borderBottom: item.type !== 'Logs' ? `1px solid ${C.border}66` : 'none' }}>
+                <div style={{ width: 50, fontWeight: 800, fontSize: 18, color: item.color }}>{item.share}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 16 }}>{item.type}</span>
+                    <Badge variant={item.tier === 'Tier 1' ? 'red' : item.tier === 'Tier 2' ? 'amber' : 'green'}>{item.tier}</Badge>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{item.desc}</div>
+                </div>
               </div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0D0D0D', margin: '0 0 10px', letterSpacing: '-0.02em' }}>{f.title}</h3>
-              <p style={{ fontSize: 14, color: '#666', lineHeight: 1.7, margin: 0 }}>{f.desc}</p>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features ── */}
+      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '60px 48px 100px' }}>
+        <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', color: C.accent, margin: 0, textAlign: 'center' }}>How it works</p>
+        <h2 style={{ fontSize: 44, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.03em', margin: '8px 0 56px', textAlign: 'center' }}>Adaptive by design.</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
+          {[
+            { num: '01', title: 'Classify & route', color: C.accent, icon: <Activity size={24}/>, desc: 'Every event is tagged with a priority tier — Payment, Inventory, Click, or Log — and instantly routed to the right queue.' },
+            { num: '02', title: 'Adapt under load',  color: C.amber, icon: <SlidersHorizontal size={24}/>, desc: 'When Tier 1 latency rises, the system escalates through 4 levels: Normal → Elevated → Critical → Emergency, shedding lower-priority work.' },
+            { num: '03', title: 'Never drop P0',     color: C.green, icon: <Shield size={24}/>, desc: 'Critical events (payments, orders) are guaranteed. The system enforces a hard invariant: zero P0 events shed, regardless of load.' },
+          ].map(f => (
+            <div key={f.num} className="feature-card" style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 20, padding: 40, transition: 'transform 0.3s, box-shadow 0.3s', cursor: 'default' }}>
+              <div style={{ width: 56, height: 56, background: f.color + '18', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, color: f.color }}>
+                {f.icon}
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0D0D0D', margin: '0 0 12px', letterSpacing: '-0.02em' }}>{f.title}</h3>
+              <p style={{ fontSize: 15, color: '#666', lineHeight: 1.7, margin: 0 }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── CTA ── */}
-      <section style={{ background: '#F7F5F0', padding: '80px 48px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: 48, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.03em', margin: '0 0 14px' }}>
+      <section style={{ background: `linear-gradient(135deg, ${C.bg} 0%, #fff 100%)`, padding: '100px 48px', textAlign: 'center', borderTop: `1px solid ${C.border}` }}>
+        <div style={{ width: 80, height: 80, background: C.amber + '33', borderRadius: '50%', margin: '0 auto 24px', display: 'grid', placeItems: 'center', color: C.amber }}>
+          <Gauge size={40} strokeWidth={2.5} />
+        </div>
+        <h2 style={{ fontSize: 52, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.03em', margin: '0 0 16px' }}>
           See it in action.
         </h2>
-        <p style={{ fontSize: 16, color: '#666', margin: '0 0 36px' }}>
-          Trigger a 10× traffic spike and watch the pipeline self-adapt in real time.
+        <p style={{ fontSize: 18, color: '#666', margin: '0 auto 40px', maxWidth: 500, lineHeight: 1.6 }}>
+          Trigger a 10&times; traffic spike and watch the pipeline self-adapt in real time without dropping a single payment.
         </p>
-        <Link to="/admin/simulation" style={{ background: C.amber, color: '#0D0D0D', padding: '16px 36px', borderRadius: 12, fontSize: 16, fontWeight: 800, textDecoration: 'none', display: 'inline-block' }}>
+        <Link className="cta-button-hover" to="/admin/simulation" style={{ 
+          background: C.amber, color: '#0D0D0D', padding: '18px 48px', 
+          borderRadius: 14, fontSize: 16, fontWeight: 800, textDecoration: 'none', display: 'inline-block',
+          boxShadow: '0 8px 32px rgba(245, 180, 0, 0.3)', transition: 'all 0.3s'
+        }}>
           Launch Simulator
         </Link>
       </section>
 
       {/* ── Footer ── */}
-      <footer style={{ background: '#fff', borderTop: `1px solid ${C.border}`, padding: '36px 48px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 28, height: 28, background: '#0D0D0D', borderRadius: 5, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 12, fontWeight: 900 }}>J</div>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#0D0D0D' }}>AdaptQ</span>
+      <footer style={{ background: '#fff', borderTop: `1px solid ${C.border}`, padding: '48px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 32, height: 32, background: '#0D0D0D', borderRadius: 6, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 13, fontWeight: 900 }}>J</div>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#0D0D0D', letterSpacing: '-0.02em' }}>AdaptQ</span>
           </div>
-          <div style={{ display: 'flex', gap: 28 }}>
+          <div style={{ display: 'flex', gap: 32 }}>
             {[['Dashboard', '/admin'], ['Simulation', '/admin/simulation'], ['Pipeline', '/admin/pipeline'], ['Benchmarks', '/admin/benchmarks']].map(([label, to]) => (
-              <Link key={label} to={to} style={{ fontSize: 13, color: '#666', textDecoration: 'none' }}>{label}</Link>
+              <Link key={label} className="nav-link-hover" to={to} style={{ fontSize: 14, color: '#666', fontWeight: 500, textDecoration: 'none', transition: 'color 0.2s' }}>{label}</Link>
             ))}
           </div>
-          <p style={{ fontSize: 12, color: '#999', margin: 0 }}>Built for Hackaholics 2026</p>
+          <p style={{ fontSize: 13, color: '#999', margin: 0, fontWeight: 500 }}>Built for Hackaholics 2026</p>
         </div>
       </footer>
     </div>
