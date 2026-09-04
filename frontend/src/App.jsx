@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { BrowserRouter, useLocation, Routes, Route, Link, Navigate } from 'react-router-dom'
-import { Activity, AlertTriangle, ArrowRight, BarChart3, Box, ChevronRight, Clock3, Database, Gauge, LayoutDashboard, SlidersHorizontal, Server, Settings, Wifi, Zap, TrendingUp } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowRight, BarChart3, Box, ChevronRight, Clock3, Database, Gauge, LayoutDashboard, Lock, LogOut, SlidersHorizontal, Server, Settings, UserPlus, Wifi, Zap, TrendingUp } from 'lucide-react'
 import { AreaChart, Area, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 // ─── WebSocket Context ───────────────────────────────────────────────
@@ -27,6 +27,202 @@ function WsProvider({ children }) {
 }
 
 function useWs() { return useContext(WsCtx) }
+
+// ─── Auth Context ───────────────────────────────────────────────────
+const AuthCtx = createContext(null)
+
+function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('jf_user')
+      const token = localStorage.getItem('jf_token')
+      return stored && token ? JSON.parse(stored) : null
+    } catch { return null }
+  })
+
+  const login = useCallback(async (email, password) => {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.detail || 'Login failed')
+    }
+    const data = await res.json()
+    localStorage.setItem('jf_token', data.access_token)
+    localStorage.setItem('jf_user', JSON.stringify(data.user))
+    setUser(data.user)
+    return data.user
+  }, [])
+
+  const signup = useCallback(async (email, password, name, role) => {
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name, role }),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.detail || 'Signup failed')
+    }
+    const data = await res.json()
+    localStorage.setItem('jf_token', data.access_token)
+    localStorage.setItem('jf_user', JSON.stringify(data.user))
+    setUser(data.user)
+    return data.user
+  }, [])
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('jf_token')
+    localStorage.removeItem('jf_user')
+    setUser(null)
+  }, [])
+
+  return <AuthCtx.Provider value={{ user, login, signup, logout }}>{children}</AuthCtx.Provider>
+}
+
+function useAuth() { return useContext(AuthCtx) }
+
+function getToken() { return localStorage.getItem('jf_token') }
+
+function authFetch(url, opts = {}) {
+  const token = getToken()
+  return fetch(url, {
+    ...opts,
+    headers: {
+      ...opts.headers,
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+}
+
+// ─── Login Page ─────────────────────────────────────────────────────
+function LoginPage() {
+  const { login } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await login(email, password)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f5f8fc]">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[#0f9d88] text-xl font-bold text-white">J</div>
+          <h1 className="text-2xl font-bold text-[#102a43]">JugaadFlow</h1>
+          <p className="mt-2 text-sm text-slate-500">Sign in to the control room</p>
+        </div>
+        <form onSubmit={handleSubmit} className="glass rounded-2xl p-8">
+          {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
+          <label className="block text-sm font-medium text-slate-700">Email</label>
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+            className="mt-1 mb-4 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-[#0f9d88] focus:outline-none focus:ring-1 focus:ring-[#0f9d88]" />
+          <label className="block text-sm font-medium text-slate-700">Password</label>
+          <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
+            className="mt-1 mb-6 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-[#0f9d88] focus:outline-none focus:ring-1 focus:ring-[#0f9d88]" />
+          <button type="submit" disabled={loading}
+            className="w-full rounded-lg bg-[#0f9d88] py-2.5 text-sm font-semibold text-white hover:bg-[#087f6f] disabled:opacity-50">
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+          <p className="mt-4 text-center text-sm text-slate-500">
+            No account? <Link to="/signup" className="font-medium text-[#0f9d88] hover:underline">Sign up</Link>
+          </p>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Signup Page ────────────────────────────────────────────────────
+function SignupPage() {
+  const { signup } = useAuth()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('viewer')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return }
+    setLoading(true)
+    try {
+      await signup(email, password, name, role)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f5f8fc]">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[#0f9d88] text-xl font-bold text-white">J</div>
+          <h1 className="text-2xl font-bold text-[#102a43]">JugaadFlow</h1>
+          <p className="mt-2 text-sm text-slate-500">Create your account</p>
+        </div>
+        <form onSubmit={handleSubmit} className="glass rounded-2xl p-8">
+          {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
+          <label className="block text-sm font-medium text-slate-700">Name</label>
+          <input type="text" required value={name} onChange={e => setName(e.target.value)}
+            className="mt-1 mb-4 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-[#0f9d88] focus:outline-none focus:ring-1 focus:ring-[#0f9d88]" />
+          <label className="block text-sm font-medium text-slate-700">Email</label>
+          <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+            className="mt-1 mb-4 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-[#0f9d88] focus:outline-none focus:ring-1 focus:ring-[#0f9d88]" />
+          <label className="block text-sm font-medium text-slate-700">Password</label>
+          <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
+            className="mt-1 mb-4 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-[#0f9d88] focus:outline-none focus:ring-1 focus:ring-[#0f9d88]" placeholder="Min 6 characters" />
+          <label className="block text-sm font-medium text-slate-700">Role</label>
+          <div className="mt-1 mb-6 flex gap-3">
+            {['viewer', 'admin'].map(r => (
+              <button key={r} type="button" onClick={() => setRole(r)}
+                className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition ${role === r ? 'border-[#0f9d88] bg-[#eef8f6] text-[#087f6f]' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                {r === 'admin' ? 'Admin' : 'Viewer'}
+                <span className="block text-[11px] font-normal text-slate-400 mt-0.5">
+                  {r === 'admin' ? 'Full control' : 'Read-only'}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button type="submit" disabled={loading}
+            className="w-full rounded-lg bg-[#0f9d88] py-2.5 text-sm font-semibold text-white hover:bg-[#087f6f] disabled:opacity-50">
+            {loading ? 'Creating account...' : 'Create account'}
+          </button>
+          <p className="mt-4 text-center text-sm text-slate-500">
+            Already have an account? <Link to="/login" className="font-medium text-[#0f9d88] hover:underline">Sign in</Link>
+          </p>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Route Guard ────────────────────────────────────────────────────
+function RequireAuth({ children }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
 
 // ─── Shared UI Components ────────────────────────────────────────────
 const navAdmin = [
@@ -55,8 +251,10 @@ function Button({ children, secondary = false, onClick, type = 'button', disable
 function Shell({ children }) {
   const loc = useLocation()
   const data = useWs()
+  const { user, logout } = useAuth()
   const levelName = data ? ['NORMAL', 'ELEVATED', 'CRITICAL', 'EMERGENCY'][data.level] : 'CONNECTING...'
   const levelColor = data ? ['#0f9d88', '#e65100', '#b71c1c', '#880e4f'][data.level] : '#666'
+  const isAdmin = user?.role === 'admin'
 
   return (
     <div className="shell flex bg-[#f5f8fc]">
@@ -76,6 +274,19 @@ function Shell({ children }) {
           ))}
         </div>
         <div className="border-t border-slate-100 pt-4">
+          {user && (
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-slate-700">{user.name || user.email}</p>
+                <p className={`text-[11px] font-semibold ${isAdmin ? 'text-[#0f9d88]' : 'text-slate-400'}`}>
+                  {isAdmin ? 'Admin' : 'Viewer'}
+                </p>
+              </div>
+              <button onClick={logout} title="Sign out" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                <LogOut size={15} />
+              </button>
+            </div>
+          )}
           <p className="text-xs text-slate-400">JugaadFlow v1.0</p>
           <p className="text-xs text-slate-400">8 workers · adaptive pipeline</p>
         </div>
@@ -385,8 +596,11 @@ function Decisions() {
 // ─── Simulation ──────────────────────────────────────────────────────
 function Simulation() {
   const data = useWs()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [localRate, setLocalRate] = useState(null)
   const [mode, setMode] = useState(null)
+  const [authError, setAuthError] = useState('')
   const lastApplied = useRef(0)
 
   const wsRate = data ? Math.round(data.rate_multiplier * BASE_RATE) : 3400
@@ -400,14 +614,16 @@ function Simulation() {
     }
   }, [data, mode, wsRate])
 
-  const applyRate = useCallback((r) => {
+  const applyRate = useCallback(async (r) => {
     setLocalRate(r)
     lastApplied.current = Date.now()
-    fetch('/api/rate', {
+    setAuthError('')
+    const res = await authFetch('/api/rate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ events_per_min: r }),
     })
+    if (res.status === 403) setAuthError('Admin role required to change rate')
+    else if (res.status === 401) setAuthError('Please sign in to change rate')
   }, [])
 
   const currentLevel = data?.level ?? 0
@@ -431,25 +647,40 @@ function Simulation() {
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <div className="glass rounded-xl p-6">
           <h2 className="font-semibold">Scenario</h2>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {['Normal', 'Spike', 'Stress', 'Recovery'].map(x => (
-              <button onClick={() => {
-                setMode(x)
-                const rates = { Normal: 3400, Spike: 20000, Stress: 50000, Recovery: 3400 }
-                applyRate(rates[x])
-              }} key={x}
-                className={`rounded-lg border px-3 py-2 text-sm ${mode === x ? 'border-[#0f9d88] bg-[#eef8f6] text-[#087f6f]' : 'border-slate-200 text-slate-500'}`}>
-                {x}
-              </button>
-            ))}
-          </div>
+          {isAdmin ? (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {['Normal', 'Spike', 'Stress', 'Recovery'].map(x => (
+                <button onClick={() => {
+                  setMode(x)
+                  const rates = { Normal: 3400, Spike: 20000, Stress: 50000, Recovery: 3400 }
+                  applyRate(rates[x])
+                }} key={x}
+                  className={`rounded-lg border px-3 py-2 text-sm ${mode === x ? 'border-[#0f9d88] bg-[#eef8f6] text-[#087f6f]' : 'border-slate-200 text-slate-500'}`}>
+                  {x}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-slate-400"><Lock size={11} className="inline mr-1" />Admin only</p>
+          )}
 
-          <label className="mt-8 block text-sm font-medium">
-            Traffic rate <span className="float-right mono text-[#0f9d88]">{rate.toLocaleString()} / min</span>
-          </label>
-          <input className="mt-5 w-full accent-[#0f9d88]" type="range" min="1000" max="50000" step="500"
-            value={rate} onChange={e => applyRate(+e.target.value)} />
-          <div className="mt-2 flex justify-between text-xs text-slate-400"><span>1k</span><span>50k</span></div>
+          {authError && <div className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{authError}</div>}
+
+          {isAdmin ? (
+            <>
+              <label className="mt-8 block text-sm font-medium">
+                Traffic rate <span className="float-right mono text-[#0f9d88]">{rate.toLocaleString()} / min</span>
+              </label>
+              <input className="mt-5 w-full accent-[#0f9d88]" type="range" min="1000" max="50000" step="500"
+                value={rate} onChange={e => applyRate(+e.target.value)} />
+              <div className="mt-2 flex justify-between text-xs text-slate-400"><span>1k</span><span>50k</span></div>
+            </>
+          ) : (
+            <div className="mt-8 rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">Current rate: <span className="font-semibold text-[#102a43]">{rate.toLocaleString()}/min</span></p>
+              <p className="mt-1 text-[11px] text-slate-400"><Lock size={11} className="inline mr-1" />Admin role required to change rate</p>
+            </div>
+          )}
 
           <p className="mt-4 flex items-center gap-2 text-xs text-[#0f9d88]">
             <span className="size-2 rounded-full bg-[#0f9d88] animate-pulse" /> Pipeline always running
@@ -933,17 +1164,19 @@ function Generic({ title }) {
 function App() {
   return (
     <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route path="/" element={<Navigate to="/admin" replace />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/admin/queues" element={<QueueMonitor />} />
-      <Route path="/admin/events" element={<EventStream />} />
-      <Route path="/admin/decisions" element={<Decisions />} />
-      <Route path="/admin/simulation" element={<Simulation />} />
-      <Route path="/admin/traffic" element={<Traffic />} />
-      <Route path="/admin/pipeline" element={<Pipeline />} />
-      <Route path="/admin/benchmarks" element={<Benchmarks />} />
+      <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+      <Route path="/admin/queues" element={<RequireAuth><QueueMonitor /></RequireAuth>} />
+      <Route path="/admin/events" element={<RequireAuth><EventStream /></RequireAuth>} />
+      <Route path="/admin/decisions" element={<RequireAuth><Decisions /></RequireAuth>} />
+      <Route path="/admin/simulation" element={<RequireAuth><Simulation /></RequireAuth>} />
+      <Route path="/admin/traffic" element={<RequireAuth><Traffic /></RequireAuth>} />
+      <Route path="/admin/pipeline" element={<RequireAuth><Pipeline /></RequireAuth>} />
+      <Route path="/admin/benchmarks" element={<RequireAuth><Benchmarks /></RequireAuth>} />
       {['alerts', 'settings'].map(x => (
-        <Route key={x} path={`/admin/${x}`} element={<Generic title={x[0].toUpperCase() + x.slice(1)} />} />
+        <Route key={x} path={`/admin/${x}`} element={<RequireAuth><Generic title={x[0].toUpperCase() + x.slice(1)} /></RequireAuth>} />
       ))}
     </Routes>
   )
@@ -952,9 +1185,11 @@ function App() {
 export default function Root() {
   return (
     <BrowserRouter>
-      <WsProvider>
-        <App />
-      </WsProvider>
+      <AuthProvider>
+        <WsProvider>
+          <App />
+        </WsProvider>
+      </AuthProvider>
     </BrowserRouter>
   )
 }
