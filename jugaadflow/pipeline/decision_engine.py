@@ -4,6 +4,7 @@ import time
 
 from jugaadflow.pipeline.queues import Queues
 from jugaadflow.pipeline.strategy import Strategy
+from jugaadflow.pipeline.thresholds import Thresholds
 from jugaadflow.metrics.store import Metrics
 
 logger = logging.getLogger("jugaadflow.decision")
@@ -30,14 +31,15 @@ BACKPRESSURE_THRESHOLD = 8000
 BACKPRESSURE_RELEASE = 5000
 
 
-def _apply_level(strategy: Strategy, level: int):
+def _apply_level(strategy: Strategy, level: int, thresholds: Thresholds):
     config = LEVEL_STRATEGIES[level]
+    params = thresholds.level_params[level]
     strategy.level = level
     strategy.tier2 = config["tier2"]
     strategy.tier3 = config["tier3"]
     strategy.tier4 = config["tier4"]
-    strategy.batch_sizes = config["batch_sizes"]
-    strategy.shed_sample_rate = config["shed_sample_rate"]
+    strategy.batch_sizes = params.batch_sizes
+    strategy.shed_sample_rate = params.shed_sample_rate
     strategy.drain_deferred = config["drain_deferred"]
 
 
@@ -45,25 +47,28 @@ def _total_lower_queue(queues: Queues) -> int:
     return queues.tier2.qsize() + queues.tier3.qsize() + queues.tier4.qsize()
 
 
-def _check_escalation(t1_latency_ms: float, t1_queue: int, lower_q: int, current_level: int) -> int | None:
-    # lower_q triggers are intentional — t1 stays healthy because workers prioritize it,
-    # so lower queue buildup is the actual signal that load exceeds capacity
-    if current_level < 3 and (t1_latency_ms > 300 or t1_queue > 1000 or lower_q > 500):
-        return 3
-    if current_level < 2 and (t1_latency_ms > 150 or t1_queue > 500 or lower_q > 200):
-        return 2
-    if current_level < 1 and (t1_latency_ms > 80 or t1_queue > 100 or lower_q > 50):
-        return 1
+def _check_escalation(t1_latency_ms: float, t1_queue: int, lower_q: int,
+                       current_level: int, thresholds: Thresholds) -> int | None:
+    for target_level in (3, 2, 1):
+        if current_level < target_level:
+            t = thresholds.escalation[target_level]
+            if t1_latency_ms > t.t1_latency_ms or t1_queue > t.t1_queue or lower_q > t.lower_queue:
+                return target_level
     return None
 
 
-def _check_deescalation(t1_latency_ms: float, t1_queue: int, lower_q: int, lower_q_shrinking: bool, current_level: int) -> int | None:
-    if current_level == 3 and t1_latency_ms < 100 and t1_queue < 10 and lower_q_shrinking:
-        return 2
-    if current_level == 2 and t1_latency_ms < 60 and t1_queue < 5 and lower_q_shrinking:
-        return 1
-    if current_level == 1 and t1_latency_ms < 55 and t1_queue < 5 and lower_q < 20:
-        return 0
+def _check_deescalation(t1_latency_ms: float, t1_queue: int, lower_q: int,
+                         lower_q_shrinking: bool, current_level: int,
+                         thresholds: Thresholds) -> int | None:
+    if current_level == 0:
+        return None
+    t = thresholds.deescalation[current_level]
+    if current_level in (3, 2):
+        if t1_latency_ms < t.t1_latency_ms and t1_queue < t.t1_queue and lower_q_shrinking:
+            return current_level - 1
+    elif current_level == 1:
+        if t1_latency_ms < t.t1_latency_ms and t1_queue < t.t1_queue and lower_q < (t.lower_queue or 20):
+            return 0
     return None
 
 
@@ -84,10 +89,14 @@ def _log_decision(metrics: Metrics, old_level: int, new_level: int,
     })
 
 
-async def feedback_loop(queues: Queues, strategy: Strategy, metrics: Metrics, interval: float = 3.0):
+async def feedback_loop(queues: Queues, strategy: Strategy, metrics: Metrics,
+                        thresholds: Thresholds | None = None, interval: float = 3.0):
+    if thresholds is None:
+        thresholds = Thresholds()
     deescalation_pending_since: float | None = None
     deescalation_target: int | None = None
     prev_lower_q: int = 0
+    heartbeat_counter: int = 0
 
     while True:
         await asyncio.sleep(interval)
@@ -101,10 +110,14 @@ async def feedback_loop(queues: Queues, strategy: Strategy, metrics: Metrics, in
         lower_q_shrinking = lower_q <= prev_lower_q or lower_q < 50
         old_level = strategy.level
 
-        new_level = _check_escalation(t1_latency_ms, t1_queue, lower_q, strategy.level)
+        new_level = _check_escalation(t1_latency_ms, t1_queue, lower_q, strategy.level, thresholds)
         if new_level is not None:
-            _apply_level(strategy, new_level)
+            _apply_level(strategy, new_level, thresholds)
             metrics.current_level = new_level
+            if new_level == 3 and metrics.emergency_since == 0.0:
+                metrics.emergency_since = time.time()
+            elif new_level < 3:
+                metrics.emergency_since = 0.0
             deescalation_pending_since = None
             deescalation_target = None
             logger.info(
@@ -112,20 +125,24 @@ async def feedback_loop(queues: Queues, strategy: Strategy, metrics: Metrics, in
                 LEVEL_NAMES[old_level], LEVEL_NAMES[new_level], t1_latency_ms, t1_queue, lower_q,
             )
             _log_decision(metrics, old_level, new_level, t1_latency_ms, t1_queue, lower_q, "escalate")
+            heartbeat_counter = 0
             prev_lower_q = lower_q
             continue
 
-        de_target = _check_deescalation(t1_latency_ms, t1_queue, lower_q, lower_q_shrinking, strategy.level)
+        de_target = _check_deescalation(t1_latency_ms, t1_queue, lower_q, lower_q_shrinking, strategy.level, thresholds)
         if de_target is not None:
             if deescalation_target == de_target and deescalation_pending_since is not None:
-                if time.time() - deescalation_pending_since >= DEESCALATION_COOLDOWN:
-                    _apply_level(strategy, de_target)
+                if time.time() - deescalation_pending_since >= thresholds.deescalation_cooldown:
+                    _apply_level(strategy, de_target, thresholds)
                     metrics.current_level = de_target
+                    if old_level == 3 and de_target < 3:
+                        metrics.emergency_since = 0.0
                     logger.info(
                         "DE-ESCALATED %s -> %s (t1_q=%d lower_q=%d)",
                         LEVEL_NAMES[old_level], LEVEL_NAMES[de_target], t1_queue, lower_q,
                     )
                     _log_decision(metrics, old_level, de_target, t1_latency_ms, t1_queue, lower_q, "de-escalate")
+                    heartbeat_counter = 0
                     deescalation_pending_since = None
                     deescalation_target = None
             else:
@@ -135,11 +152,27 @@ async def feedback_loop(queues: Queues, strategy: Strategy, metrics: Metrics, in
             deescalation_pending_since = None
             deescalation_target = None
 
+        heartbeat_counter += 1
+        if heartbeat_counter >= 10:
+            heartbeat_counter = 0
+            config = LEVEL_STRATEGIES[strategy.level]
+            strategy_desc = f"t2={config['tier2']} t3={config['tier3']} t4={config['tier4']}"
+            metrics.recent_decisions.appendleft({
+                "time": time.strftime("%H:%M:%S", time.localtime()),
+                "from_level": LEVEL_NAMES[strategy.level],
+                "to_level": LEVEL_NAMES[strategy.level],
+                "t1_latency": f"{t1_latency_ms:.1f}ms",
+                "t1_queue": str(t1_queue),
+                "lower_queue": str(lower_q),
+                "direction": "steady",
+                "reason": strategy_desc,
+            })
+
         input_depth = queues.input_queue.qsize()
-        if input_depth > BACKPRESSURE_THRESHOLD and not metrics.backpressure_active:
+        if input_depth > thresholds.backpressure_threshold and not metrics.backpressure_active:
             metrics.backpressure_active = True
             logger.info("BACKPRESSURE applied (input_q=%d)", input_depth)
-        elif metrics.backpressure_active and input_depth < BACKPRESSURE_RELEASE:
+        elif metrics.backpressure_active and input_depth < thresholds.backpressure_release:
             metrics.backpressure_active = False
             logger.info("BACKPRESSURE released (input_q=%d)", input_depth)
 

@@ -40,6 +40,8 @@ class Metrics:
 
     recent_events: deque = field(default_factory=lambda: deque(maxlen=50))
     recent_decisions: deque = field(default_factory=lambda: deque(maxlen=50))
+    recent_agent_actions: deque = field(default_factory=lambda: deque(maxlen=30))
+    emergency_since: float = 0.0
 
     def record_classified(self, tier: int):
         self.classified_window[tier] += 1

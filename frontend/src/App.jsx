@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { BrowserRouter, useLocation, Routes, Route, Link, Navigate } from 'react-router-dom'
 import {
-  Activity, AlertTriangle, ArrowRight, BarChart3, ChevronRight,
+  Activity, AlertTriangle, ArrowRight, BarChart3, Brain, ChevronRight,
   Clock3, Database, Gauge, LayoutDashboard, SlidersHorizontal,
   Server, Settings, Wifi, Zap, Shield,
 } from 'lucide-react'
@@ -49,7 +49,7 @@ const navAdmin = [
   ['/admin/decisions',   'Decisions',  SlidersHorizontal],
   ['/admin/simulation',  'Simulation', Gauge],
   ['/admin/benchmarks',  'Benchmarks', BarChart3],
-  ['/admin/alerts',      'Alerts',     AlertTriangle],
+  ['/admin/agents',      'AI Agents',  Brain],
   ['/admin/settings',    'Settings',   Settings],
 ]
 
@@ -247,6 +247,27 @@ function Shell({ children }) {
             {data ? 'Pipeline active' : 'Connecting...'}
           </div>
         </header>
+        {data?.human_alert?.active && (
+          <div style={{
+            margin: '0', padding: '12px 32px',
+            background: '#FEE2E2', borderBottom: `1px solid ${C.red}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>&#9888;</span>
+              <div>
+                <span style={{ fontWeight: 700, color: '#B91C1C', fontSize: 13 }}>HUMAN ESCALATION ALERT</span>
+                <span style={{ color: '#7F1D1D', fontSize: 12, marginLeft: 12 }}>{data.human_alert.reason}</span>
+                {data.human_alert.time && <span style={{ color: '#999', fontSize: 11, marginLeft: 8 }}>at {data.human_alert.time}</span>}
+              </div>
+            </div>
+            <button onClick={() => fetch('/api/alerts/acknowledge', { method: 'POST' })} style={{
+              padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', border: 'none', fontFamily: 'inherit',
+              background: '#B91C1C', color: '#fff',
+            }}>Acknowledge</button>
+          </div>
+        )}
         <div style={{ padding: 32 }}>{children}</div>
       </main>
     </div>
@@ -510,15 +531,18 @@ function Decisions() {
                   <td style={{ padding: '14px 20px', fontFamily: 'monospace' }}>{d.t1_queue}</td>
                   <td style={{ padding: '14px 20px', fontFamily: 'monospace' }}>{d.lower_queue}</td>
                   <td style={{ padding: '14px 20px' }}>
-                    <Badge variant={d.direction === 'escalate' ? 'red' : 'green'}>
-                      {d.direction === 'escalate' ? 'ESCALATED' : 'DE-ESCALATED'}
+                    <Badge variant={d.direction === 'escalate' ? 'red' : d.direction === 'steady' ? 'blue' : 'green'}>
+                      {d.direction === 'escalate' ? 'ESCALATED' : d.direction === 'steady' ? 'STEADY' : 'DE-ESCALATED'}
                     </Badge>
                   </td>
                   <td style={{ padding: '14px 20px', color: C.textSec }}>{d.reason}</td>
                 </tr>
               ))}
-              {decisions.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: C.textMuted }}>No level changes yet...</td></tr>
+              {decisions.length === 0 && data?.naive_mode && (
+                <tr><td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: C.textMuted }}>Decision engine is disabled in naive mode. Switch to adaptive mode to see decisions.</td></tr>
+              )}
+              {decisions.length === 0 && !data?.naive_mode && (
+                <tr><td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: C.textMuted }}>Waiting for level changes... Heartbeat updates appear every ~30s.</td></tr>
               )}
             </tbody>
           </table>
@@ -1077,6 +1101,197 @@ function Benchmarks() {
   )
 }
 
+// ─── AI Agents ───────────────────────────────────────────────────────
+const DEFAULT_THRESHOLDS = {
+  'escalation.1.t1_latency_ms': 80, 'escalation.1.t1_queue': 100, 'escalation.1.lower_queue': 50,
+  'escalation.2.t1_latency_ms': 150, 'escalation.2.t1_queue': 500, 'escalation.2.lower_queue': 200,
+  'escalation.3.t1_latency_ms': 300, 'escalation.3.t1_queue': 1000, 'escalation.3.lower_queue': 500,
+  'deescalation.1.t1_latency_ms': 55, 'deescalation.1.t1_queue': 5, 'deescalation.1.lower_queue': 20,
+  'deescalation.2.t1_latency_ms': 60, 'deescalation.2.t1_queue': 5,
+  'deescalation.3.t1_latency_ms': 100, 'deescalation.3.t1_queue': 10,
+  'deescalation_cooldown': 6.0, 'backpressure_threshold': 8000, 'backpressure_release': 5000,
+}
+
+function AIAgents() {
+  const data = useWs()
+  const [toggling, setToggling] = useState(false)
+
+  if (!data) return <Shell><div style={{ textAlign: 'center', color: C.textMuted, paddingTop: 80 }}>Connecting...</div></Shell>
+
+  const enabled  = data.agents_enabled || false
+  const activity = data.agent_activity || []
+  const thresholds = data.current_thresholds || {}
+
+  const toggleAgents = async () => {
+    setToggling(true)
+    await fetch(enabled ? '/api/agents/disable' : '/api/agents/enable', { method: 'POST' })
+    setTimeout(() => setToggling(false), 500)
+  }
+
+  const changedKeys = Object.keys(thresholds).filter(k => {
+    const def = DEFAULT_THRESHOLDS[k]
+    if (def === undefined) return false
+    const cur = thresholds[k]
+    if (typeof cur === 'number' && typeof def === 'number') return Math.abs(cur - def) > 0.001
+    return JSON.stringify(cur) !== JSON.stringify(def)
+  })
+
+  const lastOptimizer = activity.find(a => a.agent === 'optimizer')
+  const lastEvaluator = activity.find(a => a.agent === 'evaluator')
+
+  return (
+    <Shell>
+      <PageTitle eyebrow="Intelligence" title="AI Agents"
+        desc="LLM-powered optimizer and evaluator that dynamically tune pipeline thresholds."
+        action={
+          <button onClick={toggleAgents} disabled={toggling} style={{
+            padding: '9px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+            cursor: toggling ? 'not-allowed' : 'pointer', border: 'none', fontFamily: 'inherit',
+            background: enabled ? '#FEE2E2' : C.greenLight,
+            color: enabled ? '#B91C1C' : '#15803D',
+            opacity: toggling ? 0.6 : 1,
+          }}>
+            <Brain size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            {enabled ? 'Disable Agents' : 'Enable Agents'}
+          </button>
+        }
+      />
+
+      {/* Status cards */}
+      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', marginBottom: 24 }}>
+        <Card style={{ padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: enabled ? C.green : '#999', display: 'inline-block' }} />
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Status</span>
+          </div>
+          <p style={{ fontSize: 22, fontWeight: 800, color: enabled ? C.green : C.textMuted, margin: 0 }}>
+            {enabled ? 'Active' : 'Disabled'}
+          </p>
+          <p style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
+            {enabled ? 'Optimizer runs every 30s' : 'Set ANTHROPIC_API_KEY to activate'}
+          </p>
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: '0 0 12px' }}>Optimizer</p>
+          <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+            {lastOptimizer ? lastOptimizer.action : '—'}
+          </p>
+          <p style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
+            {lastOptimizer ? `${lastOptimizer.time} · confidence ${lastOptimizer.confidence ?? '—'}` : 'No actions yet'}
+          </p>
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: '0 0 12px' }}>Evaluator</p>
+          <p style={{ fontSize: 18, fontWeight: 700, margin: 0, color: lastEvaluator?.verdict === 'revert' ? C.red : lastEvaluator?.verdict === 'keep' ? C.green : C.text }}>
+            {lastEvaluator ? lastEvaluator.verdict || lastEvaluator.action : '—'}
+          </p>
+          <p style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
+            {lastEvaluator ? lastEvaluator.time : 'Waiting for optimizer'}
+          </p>
+        </Card>
+
+        <Card style={{ padding: 20 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: '0 0 12px' }}>Tuned params</p>
+          <p style={{ fontSize: 22, fontWeight: 800, color: changedKeys.length > 0 ? C.accent : C.textMuted, margin: 0 }}>
+            {changedKeys.length}
+          </p>
+          <p style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
+            {changedKeys.length > 0 ? 'Thresholds modified by AI' : 'Using defaults'}
+          </p>
+        </Card>
+      </div>
+
+      {/* Current Thresholds */}
+      <Card style={{ marginBottom: 24 }}>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${C.border}` }}>
+          <h2 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Current thresholds</h2>
+          <p style={{ fontSize: 13, color: C.textSec, margin: '4px 0 0' }}>
+            Values the decision engine uses right now. <span style={{ color: C.accent, fontWeight: 600 }}>Orange</span> = modified by AI.
+          </p>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 600, textAlign: 'left', fontSize: 13, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                {['Parameter', 'Current', 'Default', 'Status'].map(h => (
+                  <th key={h} style={{ padding: '12px 20px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, fontWeight: 600 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(DEFAULT_THRESHOLDS).map(([key, def]) => {
+                const cur = thresholds[key]
+                const changed = changedKeys.includes(key)
+                const display = v => typeof v === 'object' ? JSON.stringify(v) : v ?? '—'
+                return (
+                  <tr key={key} style={{ borderBottom: `1px solid ${C.border}`, background: changed ? C.accentLight : 'transparent' }}>
+                    <td style={{ padding: '10px 20px', fontFamily: 'monospace', fontSize: 11 }}>{key}</td>
+                    <td style={{ padding: '10px 20px', fontFamily: 'monospace', fontWeight: changed ? 700 : 400, color: changed ? C.accent : C.text }}>{display(cur)}</td>
+                    <td style={{ padding: '10px 20px', fontFamily: 'monospace', color: C.textMuted }}>{display(def)}</td>
+                    <td style={{ padding: '10px 20px' }}>
+                      {changed ? <Badge variant="orange">AI-tuned</Badge> : <Badge variant="green">Default</Badge>}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Activity Log */}
+      <Card>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${C.border}` }}>
+          <h2 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Agent activity log</h2>
+          <p style={{ fontSize: 13, color: C.textSec, margin: '4px 0 0' }}>Recent actions from both agents — newest first.</p>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 800, textAlign: 'left', fontSize: 13, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                {['Time', 'Agent', 'Action', 'Summary', 'Confidence', 'Verdict'].map(h => (
+                  <th key={h} style={{ padding: '12px 20px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, fontWeight: 600 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {activity.map((a, i) => (
+                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <td style={{ padding: '12px 20px', fontFamily: 'monospace', fontSize: 11 }}>{a.time}</td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <Badge variant={a.agent === 'optimizer' ? 'blue' : 'amber'}>{a.agent}</Badge>
+                  </td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <Badge variant={
+                      a.action === 'applied' ? 'green' :
+                      a.action === 'reverted' ? 'red' :
+                      a.action === 'rejected' ? 'red' :
+                      a.action === 'approved' ? 'green' :
+                      'amber'
+                    }>{a.action}</Badge>
+                  </td>
+                  <td style={{ padding: '12px 20px', color: C.textSec, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.summary}</td>
+                  <td style={{ padding: '12px 20px', fontFamily: 'monospace' }}>{a.confidence != null ? a.confidence.toFixed(2) : '—'}</td>
+                  <td style={{ padding: '12px 20px' }}>
+                    {a.verdict ? <Badge variant={a.verdict === 'keep' ? 'green' : 'red'}>{a.verdict}</Badge> : '—'}
+                  </td>
+                </tr>
+              ))}
+              {activity.length === 0 && (
+                <tr><td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: C.textMuted }}>
+                  {enabled ? 'Agents active — first action in ~15s...' : 'Enable agents to see activity here.'}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </Shell>
+  )
+}
+
 // ─── Generic placeholder ──────────────────────────────────────────────
 function Generic({ title }) {
   return (
@@ -1373,9 +1588,8 @@ function App() {
       <Route path="/admin/traffic"      element={<Traffic />} />
       <Route path="/admin/pipeline"     element={<Pipeline />} />
       <Route path="/admin/benchmarks"   element={<Benchmarks />} />
-      {['alerts', 'settings'].map(x => (
-        <Route key={x} path={`/admin/${x}`} element={<Generic title={x[0].toUpperCase() + x.slice(1)} />} />
-      ))}
+      <Route path="/admin/agents" element={<AIAgents />} />
+      <Route path="/admin/settings" element={<Generic title="Settings" />} />
     </Routes>
   )
 }

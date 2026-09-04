@@ -13,8 +13,10 @@ from jugaadflow.generator.event import Event
 from jugaadflow.generator import payloads
 from jugaadflow.pipeline.queues import Queues
 from jugaadflow.pipeline.strategy import Strategy
+from jugaadflow.pipeline.thresholds import Thresholds
 from jugaadflow.metrics.store import Metrics
 from jugaadflow.pipeline.decision_engine import LEVEL_NAMES
+from jugaadflow.agents.state import AgentState
 
 STATIC_DIR = Path(__file__).parent / "static"
 FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
@@ -37,6 +39,8 @@ def create_app(
     strategy: Strategy,
     metrics: Metrics,
     rate_multiplier: list[float],
+    thresholds: Thresholds | None = None,
+    agent_state: AgentState | None = None,
 ) -> FastAPI:
     app = FastAPI(title="JugaadFlow Dashboard")
     clients: list[WebSocket] = []
@@ -160,8 +164,45 @@ def create_app(
             "overflow": overflow,
         }
 
+    if agent_state is not None:
+        @app.post("/api/agents/enable")
+        async def enable_agents():
+            agent_state.agents_enabled = True
+            return {"agents_enabled": True}
+
+        @app.post("/api/agents/disable")
+        async def disable_agents():
+            agent_state.agents_enabled = False
+            return {"agents_enabled": False}
+
+        @app.get("/api/agents/status")
+        async def agents_status():
+            return {
+                "enabled": agent_state.agents_enabled,
+                "pending_evaluation": agent_state.pending_evaluation,
+                "consecutive_reverts": agent_state.consecutive_reverts,
+                "last_result": agent_state.last_evaluation_result,
+                "recent_actions": list(agent_state.recent_actions),
+            }
+
+        @app.post("/api/alerts/acknowledge")
+        async def acknowledge_alert():
+            agent_state.human_alert_active = False
+            agent_state.alert_reason = ""
+            return {"acknowledged": True}
+
+        @app.get("/api/alerts/status")
+        async def alerts_status():
+            return {
+                "active": agent_state.human_alert_active,
+                "reason": agent_state.alert_reason,
+                "last_alert_at": agent_state.last_alert_at,
+            }
+
     app.state.clients = clients
     app.state.naive_mode = False
+    app.state.thresholds = thresholds
+    app.state.agent_state = agent_state
 
     @app.get("/{path:path}")
     async def spa_fallback(path: str):
@@ -215,6 +256,24 @@ def build_metrics_payload(
         "classified_per_sec": dict(metrics.classified_window),
         "recent_events": list(metrics.recent_events),
         "recent_decisions": list(metrics.recent_decisions),
+        "agent_activity": list(metrics.recent_agent_actions),
+        "agents_enabled": (
+            getattr(app_ref.state, 'agent_state', None).agents_enabled
+            if app_ref and getattr(app_ref.state, 'agent_state', None) else False
+        ),
+        "current_thresholds": (
+            app_ref.state.thresholds.snapshot()
+            if app_ref and getattr(app_ref.state, 'thresholds', None) else None
+        ),
+        "human_alert": (
+            {
+                "active": app_ref.state.agent_state.human_alert_active,
+                "reason": app_ref.state.agent_state.alert_reason,
+                "time": time.strftime("%H:%M:%S", time.localtime(app_ref.state.agent_state.last_alert_at))
+                        if app_ref.state.agent_state.last_alert_at > 0 else None,
+            }
+            if app_ref and getattr(app_ref.state, 'agent_state', None) else None
+        ),
     }
 
 
