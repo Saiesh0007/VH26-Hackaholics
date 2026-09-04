@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JugaadFlow — Live Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ JugaadFlow Pipeline</h1>
+        <div class="controls">
+            <button class="btn btn-spike" onclick="triggerSpike()">🔥 SPIKE (20x)</button>
+            <button class="btn btn-normal" onclick="triggerNormal()">✅ Normal</button>
+            <button class="btn btn-mode" id="modeBtn" onclick="toggleMode()">Mode: Adaptive</button>
+        </div>
+    </div>
+
+    <div class="level-bar level-0" id="levelBar">NORMAL</div>
+
+    <div class="proof-line" id="proofLine">Payments shed: 0 ✓</div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Tier 1 Latency (Payment / Order)</h3>
+            <div class="value" id="lat1">— ms</div>
+            <div class="sub">Critical — never dropped</div>
+        </div>
+        <div class="card">
+            <h3>Tier 2 Latency (Inventory)</h3>
+            <div class="value" id="lat2">— ms</div>
+            <div class="sub">Important — can defer</div>
+        </div>
+        <div class="card">
+            <h3>Tier 3 Latency (Clicks)</h3>
+            <div class="value" id="lat3">— ms</div>
+            <div class="sub">Useful — can batch/defer</div>
+        </div>
+        <div class="card">
+            <h3>Tier 4 Latency (Logs)</h3>
+            <div class="value" id="lat4">— ms</div>
+            <div class="sub">Noise — can shed</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Queue Depths</h3>
+            <div class="counters-grid" id="queueDepths"></div>
+        </div>
+        <div class="card">
+            <h3>Backpressure</h3>
+            <div class="value bp-inactive" id="bpStatus">Inactive</div>
+            <div class="sub">Input queue: <span id="inputQ">0</span> / 10,000</div>
+        </div>
+        <div class="card">
+            <h3>Rate</h3>
+            <div class="value" id="rateValue">1x</div>
+            <div class="sub">Multiplier</div>
+        </div>
+        <div class="card">
+            <h3>Total Processed</h3>
+            <div class="value" id="totalProcessed">0</div>
+            <div class="sub">Events</div>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-card">
+            <h3>Latency per Tier (ms)</h3>
+            <canvas id="latencyChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Throughput per Tier (events/sec)</h3>
+            <canvas id="throughputChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Shed Counts</h3>
+            <div class="counters-grid" id="shedCounters"></div>
+        </div>
+        <div class="card">
+            <h3>Deferred Counts</h3>
+            <div class="counters-grid" id="deferredCounters"></div>
+        </div>
+        <div class="card">
+            <h3>Batched Counts</h3>
+            <div class="counters-grid" id="batchedCounters"></div>
+        </div>
+        <div class="card">
+            <h3>Processed Counts</h3>
+            <div class="counters-grid" id="processedCounters"></div>
+        </div>
+    </div>
+
+    <script src="/dashboard.js"></script>
+</body>
+</html>

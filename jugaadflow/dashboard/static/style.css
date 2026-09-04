@@ -1,0 +1,46 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1419; color: #e7e9ea; padding: 16px; }
+h1 { font-size: 1.6rem; margin-bottom: 12px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.controls { display: flex; gap: 8px; }
+.btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: 0.15s; }
+.btn-spike { background: #f44336; color: #fff; }
+.btn-spike:hover { background: #e53935; }
+.btn-normal { background: #4caf50; color: #fff; }
+.btn-normal:hover { background: #43a047; }
+.btn-mode { background: #2196f3; color: #fff; }
+.btn-mode:hover { background: #1e88e5; }
+.btn-active { opacity: 0.5; pointer-events: none; }
+
+.level-bar { padding: 10px 20px; border-radius: 8px; font-size: 1.1rem; font-weight: 700; text-align: center; margin-bottom: 16px; }
+.level-0 { background: #1b5e20; }
+.level-1 { background: #e65100; }
+.level-2 { background: #b71c1c; }
+.level-3 { background: #880e4f; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: 0.7; } }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.card { background: #1a1f26; border-radius: 8px; padding: 14px; }
+.card h3 { font-size: 0.85rem; color: #8899a6; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.card .value { font-size: 1.8rem; font-weight: 700; }
+.card .sub { font-size: 0.8rem; color: #8899a6; margin-top: 4px; }
+
+.proof-line { background: #1b5e20; padding: 10px 20px; border-radius: 8px; font-size: 1rem; font-weight: 600; margin-bottom: 16px; text-align: center; }
+.proof-fail { background: #b71c1c; }
+
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.chart-card { background: #1a1f26; border-radius: 8px; padding: 14px; }
+.chart-card h3 { font-size: 0.85rem; color: #8899a6; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.chart-card canvas { width: 100% !important; height: 220px !important; }
+
+.counters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.counter-item { display: flex; justify-content: space-between; padding: 6px 10px; background: #151a20; border-radius: 4px; font-size: 0.85rem; }
+.counter-label { color: #8899a6; }
+.counter-value { font-weight: 600; }
+
+.bp-active { color: #f44336; font-weight: 700; }
+.bp-inactive { color: #4caf50; }
+
+@media (max-width: 700px) {
+  .chart-row { grid-template-columns: 1fr; }
+}
