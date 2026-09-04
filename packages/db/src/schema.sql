@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS processed_events (
+    event_id VARCHAR(255) PRIMARY KEY,
+    entity_id VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    result VARCHAR(50) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS events (
+    event_id VARCHAR(255) PRIMARY KEY,
+    entity_id VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    priority VARCHAR(50) NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE,
+    payload JSONB
+);
+CREATE TABLE IF NOT EXISTS event_failures (
+    id SERIAL PRIMARY KEY,
+    event_id VARCHAR(255),
+    error TEXT,
+    failed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS dlq_events (
+    event_id VARCHAR(255) PRIMARY KEY,
+    reason TEXT,
+    moved_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
