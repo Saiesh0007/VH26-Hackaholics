@@ -13,7 +13,8 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SETTINGS & BACKEND CONFIG', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        title: const Text('SETTINGS & BACKEND CONFIG',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -25,27 +26,97 @@ class SettingsScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.cardBorder),
             ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.black,
+                    border: Border.all(color: AppColors.cardBorder, width: 1.2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x3060A5FA),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AdaptQ Command Center',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Autonomous Pipeline Intelligence • v1.0.0',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('DATA SOURCE ENGINE', style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold)),
+                const Text('DATA SOURCE ENGINE',
+                    style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: ChoiceChip(
-                        label: const Text('LOCAL MOCK SIMULATION', style: TextStyle(fontSize: 10)),
+                        label: const Text('LOCAL MOCK SIMULATION',
+                            style: TextStyle(fontSize: 10)),
                         selected: settings.dataSource == DataSourceMode.mock,
-                        onSelected: (_) => notifier.toggleDataSource(DataSourceMode.mock),
+                        onSelected: (_) =>
+                            notifier.toggleDataSource(DataSourceMode.mock),
                         selectedColor: AppColors.info.withOpacity(0.2),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: ChoiceChip(
-                        label: const Text('FASTAPI BACKEND API', style: TextStyle(fontSize: 10)),
+                        label: const Text('FASTAPI BACKEND API',
+                            style: TextStyle(fontSize: 10)),
                         selected: settings.dataSource == DataSourceMode.api,
-                        onSelected: (_) => notifier.toggleDataSource(DataSourceMode.api),
+                        onSelected: (_) =>
+                            notifier.toggleDataSource(DataSourceMode.api),
                         selectedColor: AppColors.info.withOpacity(0.2),
                       ),
                     ),
@@ -54,7 +125,8 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   'Current Active Provider: ${settings.dataSource == DataSourceMode.mock ? 'MockPipelineRepository' : 'ApiPipelineRepository (http://localhost:8000)'}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 11),
                 ),
               ],
             ),
@@ -71,24 +143,26 @@ class SettingsScreen extends ConsumerWidget {
             child: Column(
               children: [
                 SwitchListTile(
-                  title: const Text('Voice Assistant ("Ask FlowMind")', style: TextStyle(color: AppColors.textPrimary, fontSize: 12)),
-                  subtitle: const Text('Enable voice commands and intelligent audio responses', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                  value: settings.voiceAssistantEnabled,
-                  activeColor: AppColors.agent,
-                  onChanged: notifier.toggleVoiceAssistant,
-                ),
-                const Divider(height: 1, color: AppColors.divider),
-                SwitchListTile(
-                  title: const Text('Haptic Feedback', style: TextStyle(color: AppColors.textPrimary, fontSize: 12)),
-                  subtitle: const Text('Vibrate on policy changes and spike events', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                  title: const Text('Haptic Feedback',
+                      style: TextStyle(
+                          color: AppColors.textPrimary, fontSize: 12)),
+                  subtitle: const Text(
+                      'Vibrate on policy changes and spike events',
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 10)),
                   value: settings.hapticsEnabled,
                   activeColor: AppColors.info,
                   onChanged: notifier.toggleHaptics,
                 ),
                 const Divider(height: 1, color: AppColors.divider),
                 SwitchListTile(
-                  title: const Text('Particle Canvas Animations', style: TextStyle(color: AppColors.textPrimary, fontSize: 12)),
-                  subtitle: const Text('Render 60 FPS live pipeline particle flow', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                  title: const Text('Particle Canvas Animations',
+                      style: TextStyle(
+                          color: AppColors.textPrimary, fontSize: 12)),
+                  subtitle: const Text(
+                      'Render 60 FPS live pipeline particle flow',
+                      style:
+                          TextStyle(color: AppColors.textMuted, fontSize: 10)),
                   value: settings.animationsEnabled,
                   activeColor: AppColors.healthy,
                   onChanged: notifier.toggleAnimations,
@@ -97,48 +171,6 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Bland AI Calling Integration Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withOpacity(0.4)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.phone_in_talk_rounded, color: AppColors.primary, size: 16),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'BLAND AI EMERGENCY CALL AGENT',
-                      style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Automated outbound phone dispatch to On-Call SRE when autonomous FlowMind agents encounter unrecoverable edge cases.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'API Endpoint: POST https://api.bland.ai/v1/calls\nFallback: Realistic demo voice simulator active.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 9.5),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

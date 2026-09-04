@@ -8,16 +8,15 @@ import '../../models/pipeline_metrics.dart';
 import '../../widgets/animated_counter.dart';
 
 class InsightsScreen extends ConsumerStatefulWidget {
-  final VoidCallback? onOpenDrawer;
-
-  const InsightsScreen({super.key, this.onOpenDrawer});
+  const InsightsScreen({super.key});
 
   @override
   ConsumerState<InsightsScreen> createState() => _InsightsScreenState();
 }
 
 class _InsightsScreenState extends ConsumerState<InsightsScreen> {
-  int _selectedMetricIndex = 0; // 0: Throughput, 1: P0 Latency, 2: Backpressure, 3: Worker Load
+  int _selectedMetricIndex =
+      0; // 0: Throughput, 1: P0 Latency, 2: Backpressure, 3: Worker Load
   String _selectedTimeframe = '1m Live';
 
   static const List<String> _metricsTabs = [
@@ -148,28 +147,41 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: widget.onOpenDrawer != null
-            ? IconButton(
-                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
-                tooltip: 'Open Drawer Menu',
-                onPressed: widget.onOpenDrawer,
-              )
-            : null,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              'TELEMETRY & ANALYTICS',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-                color: AppColors.textPrimary,
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.black,
+                border: Border.all(color: AppColors.cardBorder, width: 1.2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
               ),
             ),
-            Text(
-              'Real-Time Observability & Per-Tier SLA Diagnostics',
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TELEMETRY & ANALYTICS',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    'Real-Time Observability & Per-Tier SLA Diagnostics',
+                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -177,7 +189,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
       body: metricsAsync.when(
         data: (metrics) {
           final spots = _getSpotsForMetric(_selectedMetricIndex, metrics);
-          final currentValStr = _getCurrentValueString(_selectedMetricIndex, metrics);
+          final currentValStr =
+              _getCurrentValueString(_selectedMetricIndex, metrics);
           final isSpike = metrics.eventRatePerMin > 1000;
 
           return SingleChildScrollView(
@@ -204,7 +217,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: AppColors.primary.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(6),
@@ -220,7 +234,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                _metricsTabs[_selectedMetricIndex].toUpperCase(),
+                                _metricsTabs[_selectedMetricIndex]
+                                    .toUpperCase(),
                                 style: const TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 11,
@@ -230,11 +245,14 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: AppColors.healthy.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.healthy.withOpacity(0.4), width: 0.8),
+                              border: Border.all(
+                                  color: AppColors.healthy.withOpacity(0.4),
+                                  width: 0.8),
                             ),
                             child: const Text(
                               '100% P0 SLA MET',
@@ -262,7 +280,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                         isSpike
                             ? 'Surge telemetry actively sampled and prioritized by FlowMind AI.'
                             : 'Normal operating baseline. All metrics within standard bounds.',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 11),
                       ),
                       const SizedBox(height: 16),
 
@@ -282,21 +301,30 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                 },
                                 borderRadius: BorderRadius.circular(16),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.surfaceElevated,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: isSelected ? AppColors.primary : AppColors.cardBorder,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.cardBorder,
                                       width: 0.8,
                                     ),
                                   ),
                                   child: Text(
                                     _metricsTabs[idx],
                                     style: TextStyle(
-                                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.textSecondary,
                                       fontSize: 10.5,
-                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
                                     ),
                                   ),
                                 ),
@@ -313,7 +341,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                         children: [
                           const Text(
                             'TIMEFRAME',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
                           ),
                           Row(
                             children: _timeframes.map((tf) {
@@ -327,21 +358,30 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   margin: const EdgeInsets.only(left: 4),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.surfaceElevated : Colors.transparent,
+                                    color: isSelected
+                                        ? AppColors.surfaceElevated
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: isSelected ? AppColors.primaryLight : Colors.transparent,
+                                      color: isSelected
+                                          ? AppColors.primaryLight
+                                          : Colors.transparent,
                                       width: 0.6,
                                     ),
                                   ),
                                   child: Text(
                                     tf,
                                     style: TextStyle(
-                                      color: isSelected ? AppColors.primaryLight : AppColors.textMuted,
+                                      color: isSelected
+                                          ? AppColors.primaryLight
+                                          : AppColors.textMuted,
                                       fontSize: 10,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
                                     ),
                                   ),
                                 ),
@@ -378,7 +418,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                 isStrokeCapRound: true,
                                 dotData: FlDotData(
                                   show: true,
-                                  getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                                  getDotPainter:
+                                      (spot, percent, barData, index) =>
+                                          FlDotCirclePainter(
                                     radius: index == spots.length - 1 ? 5 : 0,
                                     color: Colors.white,
                                     strokeWidth: 2,
@@ -432,25 +474,51 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                           ),
                           Text(
                             'SLA AUDIT',
-                            style: TextStyle(color: AppColors.info, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: AppColors.info,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                       const SizedBox(height: 6),
                       const Text(
                         'Aggregate latency hides the story. AdaptQ ensures critical transactions maintain sub-50ms processing while non-critical logs absorb queue latency.',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 11, height: 1.3),
+                        style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                            height: 1.3),
                       ),
                       const SizedBox(height: 16),
 
                       // 4 Tiers Latency Bars
-                      _buildTierLatencyRow('P0 Payments & Orders', metrics.p0LatencyMs.toInt(), 50, AppColors.healthy, 'STREAM (100% Target Met)'),
+                      _buildTierLatencyRow(
+                          'P0 Payments & Orders',
+                          metrics.p0LatencyMs.toInt(),
+                          50,
+                          AppColors.healthy,
+                          'STREAM (100% Target Met)'),
                       const SizedBox(height: 12),
-                      _buildTierLatencyRow('P1 Inventory Reservation', metrics.p1LatencyMs.toInt(), 200, AppColors.primary, 'BATCH (Dynamic 500)'),
+                      _buildTierLatencyRow(
+                          'P1 Inventory Reservation',
+                          metrics.p1LatencyMs.toInt(),
+                          200,
+                          AppColors.primary,
+                          'BATCH (Dynamic 500)'),
                       const SizedBox(height: 12),
-                      _buildTierLatencyRow('P2 Telemetry & Clicks', metrics.p2LatencyMs.toInt(), 500, AppColors.warning, 'DEFER (30s Spillover Buffer)'),
+                      _buildTierLatencyRow(
+                          'P2 Telemetry & Clicks',
+                          metrics.p2LatencyMs.toInt(),
+                          500,
+                          AppColors.warning,
+                          'DEFER (30s Spillover Buffer)'),
                       const SizedBox(height: 12),
-                      _buildTierLatencyRow('P3 System Logs', metrics.p3LatencyMs.toInt(), 1000, AppColors.critical, 'SHED (75% Controlled Drop)'),
+                      _buildTierLatencyRow(
+                          'P3 System Logs',
+                          metrics.p3LatencyMs.toInt(),
+                          1000,
+                          AppColors.critical,
+                          'SHED (75% Controlled Drop)'),
                     ],
                   ),
                 ),
@@ -478,13 +546,17 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      _buildCompositionRow('P0 Payments & Checkout', '20%', AppColors.p0Critical, 'Revenue Protected'),
+                      _buildCompositionRow('P0 Payments & Checkout', '20%',
+                          AppColors.p0Critical, 'Revenue Protected'),
                       const SizedBox(height: 8),
-                      _buildCompositionRow('P1 Inventory Operations', '25%', AppColors.p1High, 'Adaptive Batching'),
+                      _buildCompositionRow('P1 Inventory Operations', '25%',
+                          AppColors.p1High, 'Adaptive Batching'),
                       const SizedBox(height: 8),
-                      _buildCompositionRow('P2 User Behavioral Telemetry', '35%', AppColors.p2Normal, 'Deferred Buffer'),
+                      _buildCompositionRow('P2 User Behavioral Telemetry',
+                          '35%', AppColors.p2Normal, 'Deferred Buffer'),
                       const SizedBox(height: 8),
-                      _buildCompositionRow('P3 Debug Logs & Traces', '20%', AppColors.p3Low, 'Selectively Sampled'),
+                      _buildCompositionRow('P3 Debug Logs & Traces', '20%',
+                          AppColors.p3Low, 'Selectively Sampled'),
                     ],
                   ),
                 ),
@@ -493,13 +565,17 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (err, __) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.critical))),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, __) => Center(
+            child: Text('Error: $err',
+                style: const TextStyle(color: AppColors.critical))),
       ),
     );
   }
 
-  Widget _buildTierLatencyRow(String tier, int latencyMs, int targetSla, Color color, String modeTag) {
+  Widget _buildTierLatencyRow(
+      String tier, int latencyMs, int targetSla, Color color, String modeTag) {
     final ratio = (latencyMs / (targetSla * 1.5)).clamp(0.05, 1.0);
 
     return Column(
@@ -508,17 +584,23 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(tier, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
+            Text(tier,
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600)),
             Row(
               children: [
                 Text(
                   '$latencyMs ms',
-                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: color, fontSize: 11, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   '(SLA < $targetSla ms)',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 9.5),
+                  style: const TextStyle(
+                      color: AppColors.textMuted, fontSize: 9.5),
                 ),
               ],
             ),
@@ -535,22 +617,37 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(modeTag, style: TextStyle(color: color.withOpacity(0.8), fontSize: 9, fontWeight: FontWeight.bold)),
+        Text(modeTag,
+            style: TextStyle(
+                color: color.withOpacity(0.8),
+                fontSize: 9,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
 
-  Widget _buildCompositionRow(String name, String percentage, Color dotColor, String strategy) {
+  Widget _buildCompositionRow(
+      String name, String percentage, Color dotColor, String strategy) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
+        Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle)),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11)),
+          child: Text(name,
+              style:
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 11)),
         ),
-        Text(strategy, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+        Text(strategy,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
         const SizedBox(width: 10),
-        Text(percentage, style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.bold)),
+        Text(percentage,
+            style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 11,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }

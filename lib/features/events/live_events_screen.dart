@@ -7,9 +7,7 @@ import '../../core/theme/app_colors.dart';
 import 'event_trace_screen.dart';
 
 class LiveEventsScreen extends ConsumerWidget {
-  final VoidCallback? onOpenDrawer;
-
-  const LiveEventsScreen({super.key, this.onOpenDrawer});
+  const LiveEventsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,14 +17,26 @@ class LiveEventsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: onOpenDrawer != null
-            ? IconButton(
-                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
-                tooltip: 'Open Drawer Menu',
-                onPressed: onOpenDrawer,
-              )
-            : null,
-        title: const Text('LIVE EVENT STREAM', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        title: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.black,
+                border: Border.all(color: AppColors.cardBorder, width: 1.2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('LIVE EVENT STREAM',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -41,35 +51,48 @@ class LiveEventsScreen extends ConsumerWidget {
                   FilterChip(
                     label: const Text('ALL', style: TextStyle(fontSize: 10)),
                     selected: priorityFilter == null,
-                    onSelected: (_) => ref.read(priorityFilterProvider.notifier).state = null,
+                    onSelected: (_) =>
+                        ref.read(priorityFilterProvider.notifier).state = null,
                     selectedColor: AppColors.info.withOpacity(0.2),
                   ),
                   const SizedBox(width: 6),
                   FilterChip(
-                    label: const Text('P0 PAYMENTS', style: TextStyle(fontSize: 10)),
+                    label: const Text('P0 PAYMENTS',
+                        style: TextStyle(fontSize: 10)),
                     selected: priorityFilter == WorkloadPriority.p0Payment,
-                    onSelected: (_) => ref.read(priorityFilterProvider.notifier).state = WorkloadPriority.p0Payment,
+                    onSelected: (_) => ref
+                        .read(priorityFilterProvider.notifier)
+                        .state = WorkloadPriority.p0Payment,
                     selectedColor: AppColors.p0Critical.withOpacity(0.2),
                   ),
                   const SizedBox(width: 6),
                   FilterChip(
-                    label: const Text('P1 INVENTORY', style: TextStyle(fontSize: 10)),
+                    label: const Text('P1 INVENTORY',
+                        style: TextStyle(fontSize: 10)),
                     selected: priorityFilter == WorkloadPriority.p1Inventory,
-                    onSelected: (_) => ref.read(priorityFilterProvider.notifier).state = WorkloadPriority.p1Inventory,
+                    onSelected: (_) => ref
+                        .read(priorityFilterProvider.notifier)
+                        .state = WorkloadPriority.p1Inventory,
                     selectedColor: AppColors.p1High.withOpacity(0.2),
                   ),
                   const SizedBox(width: 6),
                   FilterChip(
-                    label: const Text('P2 ACTIVITY', style: TextStyle(fontSize: 10)),
+                    label: const Text('P2 ACTIVITY',
+                        style: TextStyle(fontSize: 10)),
                     selected: priorityFilter == WorkloadPriority.p2Activity,
-                    onSelected: (_) => ref.read(priorityFilterProvider.notifier).state = WorkloadPriority.p2Activity,
+                    onSelected: (_) => ref
+                        .read(priorityFilterProvider.notifier)
+                        .state = WorkloadPriority.p2Activity,
                     selectedColor: AppColors.p2Normal.withOpacity(0.2),
                   ),
                   const SizedBox(width: 6),
                   FilterChip(
-                    label: const Text('P3 LOGS', style: TextStyle(fontSize: 10)),
+                    label:
+                        const Text('P3 LOGS', style: TextStyle(fontSize: 10)),
                     selected: priorityFilter == WorkloadPriority.p3Log,
-                    onSelected: (_) => ref.read(priorityFilterProvider.notifier).state = WorkloadPriority.p3Log,
+                    onSelected: (_) => ref
+                        .read(priorityFilterProvider.notifier)
+                        .state = WorkloadPriority.p3Log,
                     selectedColor: AppColors.p3Low.withOpacity(0.2),
                   ),
                 ],
@@ -81,11 +104,14 @@ class LiveEventsScreen extends ConsumerWidget {
               data: (events) {
                 final filtered = priorityFilter == null
                     ? events
-                    : events.where((e) => e.priority == priorityFilter).toList();
+                    : events
+                        .where((e) => e.priority == priorityFilter)
+                        .toList();
 
                 if (filtered.isEmpty) {
                   return const Center(
-                    child: Text('No events matching selected priority filter.', style: TextStyle(color: AppColors.textMuted)),
+                    child: Text('No events matching selected priority filter.',
+                        style: TextStyle(color: AppColors.textMuted)),
                   );
                 }
 
@@ -100,7 +126,8 @@ class LiveEventsScreen extends ConsumerWidget {
                         ref.read(selectedEventProvider.notifier).state = event;
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => EventTraceScreen(event: event)),
+                          MaterialPageRoute(
+                              builder: (_) => EventTraceScreen(event: event)),
                         );
                       },
                     );

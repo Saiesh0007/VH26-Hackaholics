@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/metrics_provider.dart';
 import '../../providers/flowmind_provider.dart';
 import '../../providers/pipeline_provider.dart';
-import '../../providers/demo_provider.dart';
 import '../../widgets/metric_card.dart';
 import '../../widgets/queue_card.dart';
 import '../../widgets/critical_shield.dart';
@@ -11,14 +10,9 @@ import '../../widgets/agent_status_indicator.dart';
 import '../../widgets/pressure_gauge.dart';
 import '../../widgets/animated_counter.dart';
 import '../../core/theme/app_colors.dart';
-import '../voice/voice_assistant_dialog.dart';
-import '../incidents/incidents_screen.dart';
-import '../../services/bland_ai_service.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
-  final VoidCallback? onOpenDrawer;
-
-  const DashboardScreen({super.key, this.onOpenDrawer});
+  const DashboardScreen({super.key});
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -27,7 +21,14 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   double? _draggedSliderValue;
 
-  static const List<int> _snapPoints = [1000, 20000, 40000, 60000, 80000, 100000];
+  static const List<int> _snapPoints = [
+    1000,
+    20000,
+    40000,
+    60000,
+    80000,
+    100000
+  ];
 
   int _snapToNearest(double raw) {
     int best = _snapPoints[0];
@@ -69,25 +70,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: widget.onOpenDrawer != null
-            ? Padding(
-                padding: const EdgeInsets.only(left: 10),
-                child: IconButton(
-                  icon: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceElevated,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.cardBorder, width: 0.8),
-                    ),
-                    child: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 20),
-                  ),
-                  tooltip: 'Open Drawer Menu',
-                  onPressed: widget.onOpenDrawer,
-                ),
-              )
-            : null,
         title: Row(
           children: [
             Container(
@@ -141,34 +123,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
-        actions: [
-          // Quick Access to Incident Center & Bland AI Voice Dispatch
-          IconButton(
-            icon: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceElevated,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.cardBorder, width: 0.8),
-              ),
-              child: const Icon(Icons.notifications_active_outlined, size: 18, color: AppColors.primary),
-            ),
-            tooltip: 'Incident Center & Bland AI',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const IncidentsScreen()),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: metricsAsync.when(
         data: (metrics) {
           final isSpike = metrics.eventRatePerMin > 1000;
-          final currentTraffic = _draggedSliderValue?.round() ?? metrics.eventRatePerMin;
+          final currentTraffic =
+              _draggedSliderValue?.round() ?? metrics.eventRatePerMin;
           final activeColor = _getSurgeColor(currentTraffic);
 
           return SingleChildScrollView(
@@ -178,7 +138,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               children: [
                 // Top Agent Status Chip
                 agentStateAsync.when(
-                  data: (agentState) => AgentStatusIndicator(state: agentState.state),
+                  data: (agentState) =>
+                      AgentStatusIndicator(state: agentState.state),
                   loading: () => const SizedBox.shrink(),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
@@ -192,7 +153,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     color: AppColors.surface,
                     borderRadius: AppColors.cardRadiusLarge,
                     border: Border.all(
-                      color: isSpike ? activeColor.withOpacity(0.8) : AppColors.cardBorder,
+                      color: isSpike
+                          ? activeColor.withOpacity(0.8)
+                          : AppColors.cardBorder,
                       width: isSpike ? 1.4 : 0.8,
                     ),
                     boxShadow: isSpike
@@ -212,12 +175,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: isSpike ? activeColor.withOpacity(0.16) : AppColors.surfaceElevated,
+                              color: isSpike
+                                  ? activeColor.withOpacity(0.16)
+                                  : AppColors.surfaceElevated,
                               borderRadius: AppColors.pillRadius,
                               border: Border.all(
-                                color: isSpike ? activeColor.withOpacity(0.4) : AppColors.cardBorder,
+                                color: isSpike
+                                    ? activeColor.withOpacity(0.4)
+                                    : AppColors.cardBorder,
                                 width: 0.8,
                               ),
                             ),
@@ -225,15 +193,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  isSpike ? Icons.bolt_rounded : Icons.sync_rounded,
+                                  isSpike
+                                      ? Icons.bolt_rounded
+                                      : Icons.sync_rounded,
                                   size: 13,
-                                  color: isSpike ? activeColor : AppColors.textSecondary,
+                                  color: isSpike
+                                      ? activeColor
+                                      : AppColors.textSecondary,
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  isSpike ? 'SURGE LOAD INGESTION' : 'REAL-TIME INGRESS CONDUIT',
+                                  isSpike
+                                      ? 'SURGE LOAD INGESTION'
+                                      : 'REAL-TIME INGRESS CONDUIT',
                                   style: TextStyle(
-                                    color: isSpike ? activeColor : AppColors.textSecondary,
+                                    color: isSpike
+                                        ? activeColor
+                                        : AppColors.textSecondary,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 0.5,
@@ -243,15 +219,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: isSpike ? activeColor.withOpacity(0.15) : AppColors.surfaceElevated,
+                              color: isSpike
+                                  ? activeColor.withOpacity(0.15)
+                                  : AppColors.surfaceElevated,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               _getMultiplierLabel(currentTraffic),
                               style: TextStyle(
-                                color: isSpike ? activeColor : AppColors.textMuted,
+                                color:
+                                    isSpike ? activeColor : AppColors.textMuted,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -313,17 +293,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           inactiveTrackColor: AppColors.surfaceElevated,
                           thumbColor: Colors.white,
                           overlayColor: activeColor.withOpacity(0.2),
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                          thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 9),
                           trackHeight: 6,
                         ),
                         child: Slider(
-                          value: currentTraffic.toDouble().clamp(1000.0, 100000.0),
+                          value:
+                              currentTraffic.toDouble().clamp(1000.0, 100000.0),
                           min: 1000,
                           max: 100000,
                           divisions: 5,
                           onChanged: (val) {
                             setState(() {
-                              _draggedSliderValue = _snapToNearest(val).toDouble();
+                              _draggedSliderValue =
+                                  _snapToNearest(val).toDouble();
                             });
                           },
                           onChangeEnd: (val) {
@@ -331,7 +314,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             setState(() {
                               _draggedSliderValue = null;
                             });
-                            ref.read(pipelineRepositoryProvider).setTrafficRate(targetRate);
+                            ref
+                                .read(pipelineRepositoryProvider)
+                                .setTrafficRate(targetRate);
                           },
                         ),
                       ),
@@ -341,28 +326,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: _snapPoints.map((pt) {
                           final isSelected = currentTraffic == pt;
-                          final label = pt >= 1000 ? '${(pt / 1000).toInt()}k' : '$pt';
+                          final label =
+                              pt >= 1000 ? '${(pt / 1000).toInt()}k' : '$pt';
                           return InkWell(
                             onTap: () {
-                              ref.read(pipelineRepositoryProvider).setTrafficRate(pt);
+                              ref
+                                  .read(pipelineRepositoryProvider)
+                                  .setTrafficRate(pt);
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: isSelected ? activeColor.withOpacity(0.2) : AppColors.surfaceElevated,
+                                color: isSelected
+                                    ? activeColor.withOpacity(0.2)
+                                    : AppColors.surfaceElevated,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isSelected ? activeColor : AppColors.cardBorder,
+                                  color: isSelected
+                                      ? activeColor
+                                      : AppColors.cardBorder,
                                   width: isSelected ? 1.2 : 0.6,
                                 ),
                               ),
                               child: Text(
                                 label,
                                 style: TextStyle(
-                                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppColors.textSecondary,
                                   fontSize: 10,
-                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w500,
                                 ),
                               ),
                             ),
@@ -372,28 +369,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                       const SizedBox(height: 14),
 
-                      // Dedicated Edge Case Trigger Button
+                      // Dedicated stress simulation button
                       SizedBox(
                         width: double.infinity,
                         height: 40,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF991B1B),
+                            backgroundColor: AppColors.surfaceElevated,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: AppColors.pillRadius),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: AppColors.pillRadius),
                             elevation: 3,
                           ),
-                          icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
+                          icon:
+                              const Icon(Icons.warning_amber_rounded, size: 16),
                           label: const Text(
-                            '⚡ SIMULATE UNRECOVERABLE EDGE CASE (AUTO-CALL)',
-                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+                            'SIMULATE EXTREME STRESS (100,000 E/MIN)',
+                            style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3),
                           ),
                           onPressed: () {
-                            ref.read(pipelineRepositoryProvider).setTrafficRate(100000);
+                            ref
+                                .read(pipelineRepositoryProvider)
+                                .setTrafficRate(100000);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                backgroundColor: Color(0xFF991B1B),
-                                content: Text('🚨 100,000 e/min Edge Case triggered! Escalating to Bland AI...'),
+                                content: Text(
+                                    'Extreme stress simulation started at 100,000 events/min.'),
                                 duration: Duration(seconds: 2),
                               ),
                             );
@@ -409,13 +413,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.healthy,
-                              side: const BorderSide(color: AppColors.healthy, width: 1.0),
-                              shape: RoundedRectangleBorder(borderRadius: AppColors.pillRadius),
+                              side: const BorderSide(
+                                  color: AppColors.healthy, width: 1.0),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: AppColors.pillRadius),
                             ),
                             icon: const Icon(Icons.refresh_rounded, size: 16),
                             label: const Text(
                               'RESET TO 1,000 BASELINE',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                             onPressed: () {
                               ref.read(pipelineRepositoryProvider).recover();
@@ -476,7 +483,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       value: metrics.systemLoadPercentage.toInt(),
                       unit: '%',
                       subtitle: 'Worker CPU Pool',
-                      valueColor: metrics.systemLoadPercentage > 80 ? AppColors.warning : AppColors.healthy,
+                      valueColor: metrics.systemLoadPercentage > 80
+                          ? AppColors.warning
+                          : AppColors.healthy,
                       icon: Icons.memory_rounded,
                     ),
                     MetricCard(
@@ -484,7 +493,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       value: metrics.queuePressurePercentage.toInt(),
                       unit: '%',
                       subtitle: 'Buffer Resistance',
-                      valueColor: metrics.queuePressurePercentage > 50 ? AppColors.warning : AppColors.primary,
+                      valueColor: metrics.queuePressurePercentage > 50
+                          ? AppColors.warning
+                          : AppColors.primary,
                       icon: Icons.compress_rounded,
                     ),
                     MetricCard(
@@ -508,7 +519,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const SizedBox(height: 16),
 
                 // Backpressure Gauge
-                BackpressureGauge(queuePressurePercentage: metrics.queuePressurePercentage),
+                BackpressureGauge(
+                    queuePressurePercentage: metrics.queuePressurePercentage),
                 const SizedBox(height: 20),
 
                 // Priority Queue Workloads Header
@@ -548,15 +560,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           .toList(),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  loading: () => const Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary)),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
               ],
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (err, __) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.critical))),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, __) => Center(
+            child: Text('Error: $err',
+                style: const TextStyle(color: AppColors.critical))),
       ),
     );
   }

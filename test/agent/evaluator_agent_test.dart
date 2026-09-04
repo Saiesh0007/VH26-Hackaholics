@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pulseflow/core/constraints/classification_constraints.dart';
 import 'package:pulseflow/models/event.dart';
-import 'package:pulseflow/models/pipeline_policy.dart';
 import 'package:pulseflow/models/pipeline_metrics.dart';
 import 'package:pulseflow/simulation/pipeline_runtime.dart';
 import 'package:pulseflow/agent/evaluator_agent.dart';

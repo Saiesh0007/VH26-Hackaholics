@@ -7,9 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../models/event.dart';
 
 class PipelineScreen extends ConsumerStatefulWidget {
-  final VoidCallback? onOpenDrawer;
-
-  const PipelineScreen({super.key, this.onOpenDrawer});
+  const PipelineScreen({super.key});
 
   @override
   ConsumerState<PipelineScreen> createState() => _PipelineScreenState();
@@ -29,28 +27,41 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         automaticallyImplyLeading: false,
-        leading: widget.onOpenDrawer != null
-            ? IconButton(
-                icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary),
-                tooltip: 'Open Drawer Menu',
-                onPressed: widget.onOpenDrawer,
-              )
-            : null,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              'PIPELINE TOPOLOGY CANVAS',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-                color: AppColors.textPrimary,
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.black,
+                border: Border.all(color: AppColors.cardBorder, width: 1.2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
               ),
             ),
-            Text(
-              'Interactive Multi-Stage Ingestion & Routing Architecture',
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PIPELINE TOPOLOGY CANVAS',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    'Interactive Multi-Stage Ingestion & Routing Architecture',
+                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -73,15 +84,18 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                     borderRadius: AppColors.cardRadius,
                     border: Border.all(color: AppColors.cardBorder),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 420;
+                      final metric = Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
                             'AGGREGATE CONDUIT VELOCITY',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -93,41 +107,71 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                             ),
                           ),
                         ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      );
+                      final status = Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: (isSpike ? AppColors.primary : AppColors.healthy).withOpacity(0.15),
+                          color:
+                              (isSpike ? AppColors.primary : AppColors.healthy)
+                                  .withOpacity(0.15),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: (isSpike ? AppColors.primary : AppColors.healthy).withOpacity(0.5),
+                            color: (isSpike
+                                    ? AppColors.primary
+                                    : AppColors.healthy)
+                                .withOpacity(0.5),
                             width: 0.8,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Container(
                               width: 6,
                               height: 6,
                               decoration: BoxDecoration(
-                                color: isSpike ? AppColors.primary : AppColors.healthy,
+                                color: isSpike
+                                    ? AppColors.primary
+                                    : AppColors.healthy,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              isSpike ? 'AUTONOMOUS BACKPRESSURE' : 'STREAMING FLOW OPTIMAL',
+                              isSpike
+                                  ? 'AUTONOMOUS BACKPRESSURE'
+                                  : 'STREAMING FLOW OPTIMAL',
                               style: TextStyle(
-                                color: isSpike ? AppColors.primary : AppColors.healthy,
+                                color: isSpike
+                                    ? AppColors.primary
+                                    : AppColors.healthy,
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      );
+                      if (compact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            metric,
+                            const SizedBox(height: 10),
+                            status
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(child: metric),
+                          const SizedBox(width: 10),
+                          Flexible(child: status),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -152,15 +196,20 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                           top: 10,
                           left: 12,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.black.withOpacity(0.7),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.cardBorder, width: 0.6),
+                              border: Border.all(
+                                  color: AppColors.cardBorder, width: 0.6),
                             ),
                             child: const Text(
                               'REAL-TIME PACKET FLOW',
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
@@ -169,18 +218,29 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                           left: 10,
                           right: 10,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: AppColors.surface.withOpacity(0.85),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            child: const Wrap(
+                              alignment: WrapAlignment.spaceAround,
+                              runAlignment: WrapAlignment.center,
+                              spacing: 10,
+                              runSpacing: 4,
                               children: [
-                                _LegendDot(label: 'P0 Critical', color: AppColors.p0Critical),
-                                _LegendDot(label: 'P1 Inventory', color: AppColors.p1High),
-                                _LegendDot(label: 'P2 Activity', color: AppColors.p2Normal),
-                                _LegendDot(label: 'P3 Logs', color: AppColors.p3Low),
+                                _LegendDot(
+                                    label: 'P0 Critical',
+                                    color: AppColors.p0Critical),
+                                _LegendDot(
+                                    label: 'P1 Inventory',
+                                    color: AppColors.p1High),
+                                _LegendDot(
+                                    label: 'P2 Activity',
+                                    color: AppColors.p2Normal),
+                                _LegendDot(
+                                    label: 'P3 Logs', color: AppColors.p3Low),
                               ],
                             ),
                           ),
@@ -211,7 +271,8 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                   icon: Icons.input_rounded,
                   statusText: 'ONLINE',
                   statusColor: AppColors.healthy,
-                  details: 'High-throughput ingress buffer receiving incoming raw payloads from Kafka / webhooks.',
+                  details:
+                      'High-throughput ingress buffer receiving incoming raw payloads from Kafka / webhooks.',
                 ),
                 _buildStageConnector(),
                 _buildStageNode(
@@ -221,7 +282,8 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                   icon: Icons.alt_route_rounded,
                   statusText: 'ACTIVE',
                   statusColor: AppColors.info,
-                  details: 'Zero-latency inspection classifying transactions into isolated priority lanes to eliminate HOL blocking.',
+                  details:
+                      'Zero-latency inspection classifying transactions into isolated priority lanes to eliminate HOL blocking.',
                 ),
                 _buildStageConnector(),
                 _buildStageNode(
@@ -231,7 +293,8 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                   icon: Icons.layers_rounded,
                   statusText: isSpike ? 'SURGE TRIAGE' : '100% STREAMING',
                   statusColor: isSpike ? AppColors.primary : AppColors.healthy,
-                  details: 'P0 Payments (Zero Drop, Streaming) | P1 Inventory (Batching) | P2 Clicks (Deferral) | P3 Logs (Shedding).',
+                  details:
+                      'P0 Payments (Zero Drop, Streaming) | P1 Inventory (Batching) | P2 Clicks (Deferral) | P3 Logs (Shedding).',
                 ),
                 _buildStageConnector(),
                 _buildStageNode(
@@ -241,7 +304,8 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                   icon: Icons.psychology_rounded,
                   statusText: 'AUTONOMOUS',
                   statusColor: AppColors.agent,
-                  details: 'Continuous observe-analyze-propose loop guarded by 4 deterministic SafetyGuard invariants.',
+                  details:
+                      'Continuous observe-analyze-propose loop guarded by 4 deterministic SafetyGuard invariants.',
                 ),
                 _buildStageConnector(),
                 _buildStageNode(
@@ -251,15 +315,19 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
                   icon: Icons.storage_rounded,
                   statusText: '16 WORKERS',
                   statusColor: AppColors.healthy,
-                  details: 'Downstream commits to BigQuery OLTP, Spillover Deferral Buffer, and Analytics Lakehouse.',
+                  details:
+                      'Downstream commits to BigQuery OLTP, Spillover Deferral Buffer, and Analytics Lakehouse.',
                 ),
                 const SizedBox(height: 20),
               ],
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (err, __) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.critical))),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, __) => Center(
+            child: Text('Error: $err',
+                style: const TextStyle(color: AppColors.critical))),
       ),
     );
   }
@@ -305,58 +373,84 @@ class _PipelineScreenState extends ConsumerState<PipelineScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: statusColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 420;
+                final identity = Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 10,
-                        ),
+                      child: Icon(icon, color: statusColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    ),
+                  ],
+                );
+                final status = Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: statusColor.withOpacity(0.4), width: 0.6),
+                    border: Border.all(
+                        color: statusColor.withOpacity(0.4), width: 0.6),
                   ),
                   child: Text(
                     statusText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: statusColor,
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
+                );
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [identity, const SizedBox(height: 10), status],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: identity),
+                    const SizedBox(width: 12),
+                    Flexible(child: status),
+                  ],
+                );
+              },
             ),
             if (isSelected) ...[
               const SizedBox(height: 12),
@@ -400,9 +494,16 @@ class _LegendDot extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 9.5, fontWeight: FontWeight.w600)),
+        Text(label,
+            style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600)),
       ],
     );
   }

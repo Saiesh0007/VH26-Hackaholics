@@ -43,10 +43,10 @@ class CriticalShield extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 420;
+              final heading = Row(
                 children: [
                   Icon(
                     Icons.shield,
@@ -54,7 +54,8 @@ class CriticalShield extends StatelessWidget {
                     size: 24,
                   )
                       .animate(
-                        onPlay: (controller) => controller.repeat(reverse: true),
+                        onPlay: (controller) =>
+                            controller.repeat(reverse: true),
                       )
                       .scale(
                         begin: const Offset(1.0, 1.0),
@@ -62,31 +63,34 @@ class CriticalShield extends StatelessWidget {
                         duration: 1200.ms,
                       ),
                   const SizedBox(width: 10),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'CRITICAL EVENT SHIELD',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
+                  const Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CRITICAL EVENT SHIELD',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Immutable Safety Guard Rules Active',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
+                        Text(
+                          'Immutable Safety Guard Rules Active',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              );
+              final badge = Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.healthy.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(6),
@@ -100,8 +104,21 @@ class CriticalShield extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ],
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [heading, const SizedBox(height: 10), badge],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: heading),
+                  const SizedBox(width: 10),
+                  Flexible(child: badge),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 14),
           const Divider(height: 1, color: AppColors.divider),
@@ -112,21 +129,25 @@ class CriticalShield extends StatelessWidget {
                 child: _buildShieldItem(
                   label: 'P0 LOST',
                   value: '$criticalLost',
-                  color: criticalLost > 0 ? AppColors.critical : AppColors.healthy,
+                  color:
+                      criticalLost > 0 ? AppColors.critical : AppColors.healthy,
                 ),
               ),
               Expanded(
                 child: _buildShieldItem(
                   label: 'P2 DEFERRED',
                   value: '$deferredCount',
-                  color: deferredCount > 0 ? AppColors.warning : AppColors.textSecondary,
+                  color: deferredCount > 0
+                      ? AppColors.warning
+                      : AppColors.textSecondary,
                 ),
               ),
               Expanded(
                 child: _buildShieldItem(
                   label: 'P3 SHED',
                   value: '$shedCount',
-                  color: shedCount > 0 ? AppColors.info : AppColors.textSecondary,
+                  color:
+                      shedCount > 0 ? AppColors.info : AppColors.textSecondary,
                 ),
               ),
             ],

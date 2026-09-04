@@ -4,7 +4,6 @@ import '../repositories/pipeline_repository.dart';
 import '../repositories/mock_pipeline_repository.dart';
 import '../services/pipeline_realtime_service.dart';
 import '../services/mock_realtime_service.dart';
-import '../services/voice_assistant_service.dart';
 import '../services/copilot_service.dart';
 
 final simulationEngineProvider = Provider<SimulationEngine>((ref) {
@@ -19,14 +18,10 @@ final pipelineRepositoryProvider = Provider<PipelineRepository>((ref) {
   return MockPipelineRepository(engine);
 });
 
-final pipelineRealtimeServiceProvider = Provider<PipelineRealtimeService>((ref) {
+final pipelineRealtimeServiceProvider =
+    Provider<PipelineRealtimeService>((ref) {
   final engine = ref.watch(simulationEngineProvider);
   return MockPipelineRealtimeService(engine);
-});
-
-final voiceAssistantServiceProvider = Provider<VoiceAssistantService>((ref) {
-  final engine = ref.watch(simulationEngineProvider);
-  return VoiceAssistantService(engine);
 });
 
 final copilotServiceProvider = Provider<CopilotService>((ref) {

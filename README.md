@@ -14,7 +14,7 @@ AdaptQ is a production-style Flutter command center for an autonomous, AI-manage
                ┌───────────┼────────────┐
                │           │            │
                ▼           ▼            ▼
-          Dashboard     Voice       What-If
+          Dashboard     Events      What-If
                         Assistant    Simulator
                │           │            │
                └───────────┼────────────┘
@@ -77,10 +77,9 @@ AdaptQ is a production-style Flutter command center for an autonomous, AI-manage
    - Priority Queue cards for P0 Critical, P1 High, P2 Normal, and P3 Low.
 5. **Interactive Hackathon Presentation Tools**:
    - **🔥 20× Spike** and **🟢 Recover** CTA buttons.
-   - **Ask FlowMind Voice Assistant**: Voice & text query dialog ("Start flash sale", "Why are you batching logs?", "Are payments safe?").
    - **What-If Simulator**: Scenario testing sliders for traffic rate, worker pool count, and batch sizes.
    - **Naive vs. Adaptive Benchmark**: Side-by-side performance metrics comparison.
-   - **Demo Mode**: 10-step narrated Hackathon presentation walkthrough.
+   - **Five-tab navigation**: Dashboard, Events, FlowMind, Pipeline, and Analytics.
 
 ---
 

@@ -5,13 +5,16 @@ import '../models/queue_metrics.dart';
 import '../models/pipeline_policy.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constraints/classification_constraints.dart';
+import 'adaptive_processing.dart';
 
 class PipelineRuntime {
   final Random _random = Random();
+  final ProcessingDecisionFunction _decisionFunction =
+      const ProcessingDecisionFunction();
 
   PipelinePolicy _activePolicy = PipelinePolicy.defaultPolicy();
   int _trafficRatePerMin = AppConstants.normalTrafficRate;
-  
+
   // Internal Queue Depths
   final Map<WorkloadPriority, int> _queueDepths = {
     WorkloadPriority.p0Payment: 12,
@@ -22,6 +25,7 @@ class PipelineRuntime {
   };
 
   final List<PipelineEvent> _recentEvents = [];
+  final Map<WorkloadPriority, ProcessingScore> _lastRoutingScores = {};
   int _totalDeferredCount = 0;
   int _totalShedCount = 0;
   int _criticalEventsLost = 0;
@@ -30,6 +34,8 @@ class PipelineRuntime {
   PipelinePolicy get activePolicy => _activePolicy;
   int get trafficRate => _trafficRatePerMin;
   List<PipelineEvent> get recentEvents => List.unmodifiable(_recentEvents);
+  Map<WorkloadPriority, ProcessingScore> get lastRoutingScores =>
+      Map.unmodifiable(_lastRoutingScores);
 
   void setTrafficRate(int ratePerMin) {
     _trafficRatePerMin = ratePerMin;
@@ -41,7 +47,8 @@ class PipelineRuntime {
 
   /// Simulation Step - Executed on periodic tick (e.g. 1 sec tick)
   PipelineMetrics tickSimulation() {
-    final eventsPerSec = (_trafficRatePerMin / 60.0).round() + _random.nextInt(5) - 2;
+    final eventsPerSec =
+        (_trafficRatePerMin / 60.0).round() + _random.nextInt(5) - 2;
     final clampedEventsPerSec = max(10, eventsPerSec);
 
     // 1. Generate Ingestion Workload & Enqueue based on Policy
@@ -67,7 +74,8 @@ class PipelineRuntime {
             status: EventStatus.shed,
             strategy: ProcessingStrategy.shed,
             latencyMs: 0.0,
-            decisionReason: 'Shed non-critical workload under sampling policy (${(policy.samplingRate * 100).toInt()}% retained)',
+            decisionReason:
+                'Shed non-critical workload under sampling policy (${(policy.samplingRate * 100).toInt()}% retained)',
           );
           continue; // Skip enqueueing
         }
@@ -76,17 +84,20 @@ class PipelineRuntime {
       // Deferral logic
       if (policy.mode == ProcessingStrategy.defer) {
         _totalDeferredCount++;
-        _queueDepths[priority] = min(AppConstants.maxQueueCapacity, (_queueDepths[priority] ?? 0) + 1);
+        _queueDepths[priority] = min(
+            AppConstants.maxQueueCapacity, (_queueDepths[priority] ?? 0) + 1);
         _addRecentEvent(
           priority: priority,
           status: EventStatus.deferred,
           strategy: ProcessingStrategy.defer,
           latencyMs: 250.0 + _random.nextInt(300),
-          decisionReason: 'Intentionally deferred processing to relieve system pressure',
+          decisionReason:
+              'Intentionally deferred processing to relieve system pressure',
         );
       } else {
         // Enqueue for processing
-        _queueDepths[priority] = min(AppConstants.maxQueueCapacity, (_queueDepths[priority] ?? 0) + 1);
+        _queueDepths[priority] = min(
+            AppConstants.maxQueueCapacity, (_queueDepths[priority] ?? 0) + 1);
       }
     }
 
@@ -100,15 +111,34 @@ class PipelineRuntime {
       if (depth <= 0) continue;
 
       final policy = _activePolicy.policies[priority]!;
-      int workerCapacity = policy.workerCount * (policy.mode == ProcessingStrategy.batch ? policy.batchSize : 15);
-      
+      final routingScore = _decisionFunction.score(ProcessingInputs(
+        priority: priority.isCritical
+            ? 1.0
+            : priority.index / WorkloadPriority.values.length,
+        queueSize: (depth / AppConstants.maxQueueCapacity).clamp(0.0, 1.0),
+        latency: (depth / 5000).clamp(0.0, 1.0),
+        workerLoad: (_trafficRatePerMin / AppConstants.spikeTrafficRate)
+            .clamp(0.0, 1.0),
+        dataSize: priority.isCritical ? 0.8 : 0.3,
+        processingCost: priority.isCritical ? 0.7 : 0.4,
+      ));
+      _lastRoutingScores[priority] = routingScore;
+      final routedStrategy =
+          priority.isCritical ? policy.mode : routingScore.strategy;
+      final scaledWorkerCount =
+          min(16, max(policy.workerCount, 2 + (depth / 500).ceil()));
+      int workerCapacity = scaledWorkerCount *
+          (routedStrategy == ProcessingStrategy.batch ? policy.batchSize : 15);
+
       int processed = min(depth, workerCapacity);
       _queueDepths[priority] = depth - processed;
       totalThroughputSec += processed;
 
       // Calculate Latency & simulate processed event stream
       final queueFactor = (depth / 500.0).clamp(0.0, 10.0);
-      final latency = (priority.isCritical ? 15.0 : 40.0) + (queueFactor * 12.0) + (_random.nextDouble() * 10.0);
+      final latency = (priority.isCritical ? 15.0 : 40.0) +
+          (queueFactor * 12.0) +
+          (_random.nextDouble() * 10.0);
 
       if (priority.isCritical) {
         p0LatencySum += latency;
@@ -119,20 +149,26 @@ class PipelineRuntime {
         _addRecentEvent(
           priority: priority,
           status: EventStatus.processed,
-          strategy: policy.mode,
+          strategy: routedStrategy,
           latencyMs: latency,
           decisionReason: priority.isCritical
               ? 'Critical workload + immediate latency target guaranteed by SafetyGuard'
-              : 'Processed under adaptive mode (${policy.mode.name.toUpperCase()})',
+              : 'Processed under weighted routing (${routedStrategy.name.toUpperCase()})',
         );
       }
     }
 
     // 3. Compute Metrics
     final totalQueueDepth = _queueDepths.values.fold(0, (a, b) => a + b);
-    final queuePressure = (totalQueueDepth / (AppConstants.maxQueueCapacity * 0.2) * 100).clamp(0.0, 100.0);
-    final systemLoad = ((_trafficRatePerMin / AppConstants.spikeTrafficRate) * 75.0 + (queuePressure * 0.25)).clamp(15.0, 99.0);
-    final avgP0Latency = p0ProcessedCount > 0 ? (p0LatencySum / p0ProcessedCount) : 38.5;
+    final queuePressure =
+        (totalQueueDepth / (AppConstants.maxQueueCapacity * 0.2) * 100)
+            .clamp(0.0, 100.0);
+    final systemLoad =
+        ((_trafficRatePerMin / AppConstants.spikeTrafficRate) * 75.0 +
+                (queuePressure * 0.25))
+            .clamp(15.0, 99.0);
+    final avgP0Latency =
+        p0ProcessedCount > 0 ? (p0LatencySum / p0ProcessedCount) : 38.5;
 
     return PipelineMetrics(
       eventRatePerMin: _trafficRatePerMin,
@@ -146,7 +182,9 @@ class PipelineRuntime {
       criticalEventsLost: _criticalEventsLost, // ALWAYS 0
       totalDeferredCount: _totalDeferredCount,
       totalShedCount: _totalShedCount,
-      workerUtilization: systemLoad > 80 ? 92.0 + (_random.nextDouble() * 6.0) : 45.0 + (_random.nextDouble() * 15.0),
+      workerUtilization: systemLoad > 80
+          ? 92.0 + (_random.nextDouble() * 6.0)
+          : 45.0 + (_random.nextDouble() * 15.0),
       timestamp: DateTime.now(),
     );
   }
@@ -159,10 +197,13 @@ class PipelineRuntime {
           ? metrics.p0LatencyMs
           : (priority == WorkloadPriority.p1Inventory
               ? metrics.p1LatencyMs
-              : (priority == WorkloadPriority.p2Activity ? metrics.p2LatencyMs : metrics.p3LatencyMs));
+              : (priority == WorkloadPriority.p2Activity
+                  ? metrics.p2LatencyMs
+                  : metrics.p3LatencyMs));
 
       String trend = 'STABLE';
-      if (depth > 2000) trend = 'HIGH PRESSURE';
+      if (depth > 2000)
+        trend = 'HIGH PRESSURE';
       else if (depth > 500) trend = 'BUILDING';
 
       return PriorityQueueMetrics(
@@ -170,7 +211,9 @@ class PipelineRuntime {
         queueDepth: depth,
         capacity: AppConstants.maxQueueCapacity ~/ 4,
         latencyMs: latency,
-        throughputPerSec: (metrics.throughputPerSec * (priority.isCritical ? 0.35 : 0.2)).round(),
+        throughputPerSec:
+            (metrics.throughputPerSec * (priority.isCritical ? 0.35 : 0.2))
+                .round(),
         activeStrategy: policy.mode,
         statusTrend: trend,
       );
@@ -211,7 +254,9 @@ class PipelineRuntime {
     required String decisionReason,
   }) {
     _eventCounter++;
-    final prefix = priority.displayName.substring(0, min(3, priority.displayName.length)).toUpperCase();
+    final prefix = priority.displayName
+        .substring(0, min(3, priority.displayName.length))
+        .toUpperCase();
     final event = PipelineEvent(
       id: '#$prefix-$_eventCounter',
       type: priority.displayName,
