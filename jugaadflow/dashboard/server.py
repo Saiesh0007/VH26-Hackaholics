@@ -1,13 +1,17 @@
 import asyncio
 import json
+import logging
 import random
 import time
 from pathlib import Path
 
+import fastapi
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+logger = logging.getLogger("jugaadflow.server")
 
 from jugaadflow.generator.event import Event
 from jugaadflow.generator import payloads
@@ -225,12 +229,98 @@ def create_app(
             return {"status": "call_initiated", "call_sid": call_sid}
 
     @app.post("/api/twiml/alert")
-    async def twiml_alert():
+    async def twiml_alert(request: fastapi.Request):
         from xml.sax.saxutils import escape as xml_escape
         from fastapi.responses import Response
-        from jugaadflow.agents.escalation import pending_call_message
-        msg = xml_escape(pending_call_message or "JugaadFlow alert. Please check the dashboard.")
-        twiml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="alice">{msg}</Say></Response>'
+        from jugaadflow.agents.escalation import (
+            pending_call_message, pending_call_reason,
+            _get_public_url, init_call_conversation,
+        )
+
+        form = await request.form()
+        call_sid = form.get("CallSid", "unknown")
+
+        msg = pending_call_message or "JugaadFlow alert. Please check the dashboard."
+        init_call_conversation(call_sid, msg, pending_call_reason)
+
+        public_url = _get_public_url()
+        respond_url = xml_escape(f"{public_url}/api/twiml/respond")
+        wait_url = xml_escape(f"{public_url}/api/twiml/wait")
+        safe_msg = xml_escape(msg)
+
+        twiml = (
+            f'<?xml version="1.0" encoding="UTF-8"?>'
+            f'<Response>'
+            f'<Gather input="speech" action="{respond_url}" method="POST" speechTimeout="auto" language="en-IN">'
+            f'<Say voice="alice">{safe_msg}</Say>'
+            f'</Gather>'
+            f'<Redirect method="POST">{wait_url}</Redirect>'
+            f'</Response>'
+        )
+        return Response(content=twiml, media_type="application/xml")
+
+    @app.post("/api/twiml/wait")
+    async def twiml_wait(request: fastapi.Request):
+        from xml.sax.saxutils import escape as xml_escape
+        from fastapi.responses import Response
+        from jugaadflow.agents.escalation import _get_public_url
+
+        public_url = _get_public_url()
+        respond_url = xml_escape(f"{public_url}/api/twiml/respond")
+        wait_url = xml_escape(f"{public_url}/api/twiml/wait")
+
+        twiml = (
+            f'<?xml version="1.0" encoding="UTF-8"?>'
+            f'<Response>'
+            f'<Gather input="speech" action="{respond_url}" method="POST" speechTimeout="auto" language="en-IN">'
+            f'<Say voice="alice">I am still here. Take your time.</Say>'
+            f'</Gather>'
+            f'<Redirect method="POST">{wait_url}</Redirect>'
+            f'</Response>'
+        )
+        return Response(content=twiml, media_type="application/xml")
+
+    @app.post("/api/twiml/respond")
+    async def twiml_respond(request: fastapi.Request):
+        from xml.sax.saxutils import escape as xml_escape
+        from fastapi.responses import Response
+        from jugaadflow.agents.escalation import (
+            generate_conversation_reply, cleanup_call, _get_public_url,
+        )
+
+        form = await request.form()
+        call_sid = form.get("CallSid", "unknown")
+        speech = form.get("SpeechResult", "")
+
+        logger.info("Call %s — admin said: %s", call_sid, speech)
+
+        reply, end_call = await generate_conversation_reply(
+            call_sid, speech, metrics, queues,
+        )
+
+        logger.info("Call %s — Gemini replied: %s (end=%s)", call_sid, reply[:100], end_call)
+
+        safe_reply = xml_escape(reply)
+
+        if end_call:
+            cleanup_call(call_sid)
+            twiml = (
+                f'<?xml version="1.0" encoding="UTF-8"?>'
+                f'<Response><Say voice="alice">{safe_reply}</Say></Response>'
+            )
+        else:
+            public_url = _get_public_url()
+            respond_url = xml_escape(f"{public_url}/api/twiml/respond")
+            wait_url = xml_escape(f"{public_url}/api/twiml/wait")
+            twiml = (
+                f'<?xml version="1.0" encoding="UTF-8"?>'
+                f'<Response>'
+                f'<Gather input="speech" action="{respond_url}" method="POST" speechTimeout="auto" language="en-IN">'
+                f'<Say voice="alice">{safe_reply}</Say>'
+                f'</Gather>'
+                f'<Redirect method="POST">{wait_url}</Redirect>'
+                f'</Response>'
+            )
         return Response(content=twiml, media_type="application/xml")
 
     app.state.clients = clients
