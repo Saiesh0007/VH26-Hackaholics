@@ -29,10 +29,17 @@ class Metrics:
         1: 0, 2: 0, 3: 0, 4: 0,
     })
 
+    classified_window: dict[int, int] = field(default_factory=lambda: {
+        1: 0, 2: 0, 3: 0, 4: 0,
+    })
+
     current_level: int = 0
     backpressure_active: bool = False
     incoming_rate: float = 0.0
     start_time: float = field(default_factory=time.time)
+
+    def record_classified(self, tier: int):
+        self.classified_window[tier] += 1
 
     def record_processed(self, event, latency: float):
         self.latency_samples[event.priority].append(latency)
@@ -52,3 +59,5 @@ class Metrics:
     def reset_throughput(self):
         for k in self.throughput_window:
             self.throughput_window[k] = 0
+        for k in self.classified_window:
+            self.classified_window[k] = 0

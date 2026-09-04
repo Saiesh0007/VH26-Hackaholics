@@ -7,8 +7,9 @@ const TIER_COLORS = {
 };
 const LEVEL_CLASSES = ['level-0', 'level-1', 'level-2', 'level-3'];
 
-let latencyChart, throughputChart;
+let latencyChart, throughputChart, classChart;
 let currentMode = 'adaptive';
+const TIER_LABELS = ['Tier 1 (Payment/Order)', 'Tier 2 (Inventory)', 'Tier 3 (Clicks)', 'Tier 4 (Logs)'];
 
 function initCharts() {
     const sharedOpts = {
@@ -33,6 +34,26 @@ function initCharts() {
             ]
         },
         options: sharedOpts
+    });
+
+    classChart = new Chart(document.getElementById('classChart'), {
+        type: 'doughnut',
+        data: {
+            labels: TIER_LABELS,
+            datasets: [{
+                data: [0, 0, 0, 0],
+                backgroundColor: [TIER_COLORS[1], TIER_COLORS[2], TIER_COLORS[3], TIER_COLORS[4]],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            responsive: true,
+            animation: { duration: 300 },
+            cutout: '55%',
+            plugins: {
+                legend: { display: false },
+            }
+        }
     });
 
     throughputChart = new Chart(document.getElementById('throughputChart'), {
@@ -67,19 +88,34 @@ function renderCounters(elementId, counters) {
         .join('');
 }
 
+const QUEUE_CONFIG = [
+    { key: 'input',          label: 'Input',  max: 10000, css: 'input' },
+    { key: 'tier1',          label: 'Tier 1', max: null,  css: 'tier1' },
+    { key: 'tier2',          label: 'Tier 2', max: 5000,  css: 'tier2' },
+    { key: 'tier3',          label: 'Tier 3', max: 2000,  css: 'tier3' },
+    { key: 'tier4',          label: 'Tier 4', max: 500,   css: 'tier4' },
+    { key: 'deferred_tier2', label: 'Def T2', max: 3000,  css: 'deferred' },
+    { key: 'deferred_tier3', label: 'Def T3', max: 2000,  css: 'deferred' },
+];
+
 function renderQueueDepths(queues) {
     const el = document.getElementById('queueDepths');
-    const items = [
-        ['Tier 1', queues.tier1],
-        ['Tier 2', queues.tier2],
-        ['Tier 3', queues.tier3],
-        ['Tier 4', queues.tier4],
-        ['Def T2', queues.deferred_tier2],
-        ['Def T3', queues.deferred_tier3],
-    ];
-    el.innerHTML = items
-        .map(([k, v]) => `<div class="counter-item"><span class="counter-label">${k}</span><span class="counter-value">${v.toLocaleString()}</span></div>`)
-        .join('');
+    el.innerHTML = QUEUE_CONFIG.map(q => {
+        const current = queues[q.key] || 0;
+        const unlimited = q.max === null;
+        const pct = unlimited ? Math.min(current / 100, 1) * 100 : (current / q.max) * 100;
+        const danger = !unlimited && pct > 90;
+        const full = !unlimited && current >= q.max;
+        const maxLabel = unlimited ? '∞' : q.max.toLocaleString();
+        const fullTag = full ? '<span class="full-tag">FULL</span>' : '';
+        return `<div class="queue-bar-row">
+            <span class="queue-bar-label">${q.label}</span>
+            <div class="queue-bar">
+                <div class="queue-bar-fill ${q.css}${danger ? ' danger' : ''}" style="width:${Math.min(pct, 100)}%"></div>
+            </div>
+            <span class="queue-bar-count">${current.toLocaleString()} / ${maxLabel}${fullTag}</span>
+        </div>`;
+    }).join('');
 }
 
 function handleMessage(data) {
@@ -115,7 +151,9 @@ function handleMessage(data) {
     document.getElementById('inputQ').textContent = data.queues.input.toLocaleString();
 
     // Rate
-    document.getElementById('rateValue').textContent = data.rate_multiplier + 'x';
+    const approxRate = Math.round(data.rate_multiplier * BASE_RATE);
+    document.getElementById('rateValue').textContent = data.rate_multiplier.toFixed(1) + 'x (~' + approxRate.toLocaleString() + '/min)';
+    highlightRateButton(data.rate_multiplier);
 
     // Total processed
     const total = Object.values(data.counters.processed).reduce((a, b) => a + b, 0);
@@ -136,6 +174,19 @@ function handleMessage(data) {
         data.throughput_per_sec['4'] || 0,
     ]);
 
+    // Classification donut
+    if (data.classified_per_sec) {
+        const cls = data.classified_per_sec;
+        const vals = [cls['1'] || 0, cls['2'] || 0, cls['3'] || 0, cls['4'] || 0];
+        classChart.data.datasets[0].data = vals;
+        classChart.update();
+        const total = vals.reduce((a, b) => a + b, 0) || 1;
+        document.getElementById('classRates').innerHTML = vals.map((v, i) => {
+            const pct = ((v / total) * 100).toFixed(0);
+            return `<span class="class-badge" style="border-color:${TIER_COLORS[i+1]}">T${i+1}: ${v}/s (${pct}%)</span>`;
+        }).join('');
+    }
+
     // Counter tables
     renderCounters('shedCounters', data.counters.shed);
     renderCounters('deferredCounters', data.counters.deferred);
@@ -149,12 +200,32 @@ function connectWS() {
     ws.onclose = () => setTimeout(connectWS, 2000);
 }
 
-function triggerSpike() {
-    fetch('/api/spike', { method: 'POST' });
+const BASE_RATE = 3400;
+const PRESETS = [1000, 3400, 10000, 20000, 50000, 68000];
+
+function setRate(eventsPerMin) {
+    fetch('/api/rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events_per_min: eventsPerMin }),
+    });
 }
 
-function triggerNormal() {
-    fetch('/api/normal', { method: 'POST' });
+function setCustomRate() {
+    const input = document.getElementById('customRate');
+    const val = parseInt(input.value, 10);
+    if (val >= 100 && val <= 340000) {
+        setRate(val);
+        input.value = '';
+    }
+}
+
+function highlightRateButton(multiplier) {
+    const currentRate = Math.round(multiplier * BASE_RATE);
+    document.querySelectorAll('.btn-rate').forEach(btn => {
+        const btnRate = parseInt(btn.dataset.rate, 10);
+        btn.classList.toggle('active', Math.abs(btnRate - currentRate) < 200);
+    });
 }
 
 function toggleMode() {

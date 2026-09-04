@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from jugaadflow.pipeline.queues import Queues
 from jugaadflow.pipeline.strategy import Strategy
@@ -13,6 +14,11 @@ from jugaadflow.metrics.store import Metrics
 from jugaadflow.pipeline.decision_engine import LEVEL_NAMES
 
 STATIC_DIR = Path(__file__).parent / "static"
+BASE_EVENTS_PER_MIN = 3400.0
+
+
+class RateRequest(BaseModel):
+    events_per_min: float
 
 
 def create_app(
@@ -64,6 +70,15 @@ def create_app(
         rate_multiplier[0] = 1.0
         return {"status": "normal", "rate_multiplier": 1.0}
 
+    @app.post("/api/rate")
+    async def set_rate(req: RateRequest):
+        multiplier = max(0.1, min(100.0, req.events_per_min / BASE_EVENTS_PER_MIN))
+        rate_multiplier[0] = multiplier
+        return {
+            "rate_multiplier": round(multiplier, 2),
+            "events_per_min": round(multiplier * BASE_EVENTS_PER_MIN),
+        }
+
     @app.post("/api/mode/naive")
     async def set_naive():
         app.state.naive_mode = True
@@ -114,6 +129,7 @@ def build_metrics_payload(
             "batched": dict(metrics.batched_count),
         },
         "incoming_rate": metrics.incoming_rate,
+        "classified_per_sec": dict(metrics.classified_window),
     }
 
 

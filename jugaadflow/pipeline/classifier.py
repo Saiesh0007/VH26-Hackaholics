@@ -19,6 +19,7 @@ TIER_STRATEGY_KEY = {2: "tier2", 3: "tier3", 4: "tier4"}
 
 async def classify_and_route(event: Event, queues: Queues, metrics: Metrics, strategy: Strategy):
     event.priority = PRIORITY_MAP[event.type]
+    metrics.record_classified(event.priority)
 
     strat_key = TIER_STRATEGY_KEY.get(event.priority)
     if strat_key and getattr(strategy, strat_key) == "defer":

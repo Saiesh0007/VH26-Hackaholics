@@ -10,10 +10,19 @@
 <body>
     <div class="header">
         <h1>⚡ JugaadFlow Pipeline</h1>
-        <div class="controls">
-            <button class="btn btn-spike" onclick="triggerSpike()">🔥 SPIKE (20x)</button>
-            <button class="btn btn-normal" onclick="triggerNormal()">✅ Normal</button>
-            <button class="btn btn-mode" id="modeBtn" onclick="toggleMode()">Mode: Adaptive</button>
+        <button class="btn btn-mode" id="modeBtn" onclick="toggleMode()">Mode: Adaptive</button>
+    </div>
+
+    <div class="rate-controls" id="rateControls">
+        <button class="btn btn-rate" data-rate="1000" onclick="setRate(1000)">1K/min</button>
+        <button class="btn btn-rate active" data-rate="3400" onclick="setRate(3400)">3.4K/min</button>
+        <button class="btn btn-rate" data-rate="10000" onclick="setRate(10000)">10K/min</button>
+        <button class="btn btn-rate" data-rate="20000" onclick="setRate(20000)">20K/min</button>
+        <button class="btn btn-rate" data-rate="50000" onclick="setRate(50000)">50K/min</button>
+        <button class="btn btn-rate" data-rate="68000" onclick="setRate(68000)">68K/min (20x)</button>
+        <div class="rate-custom">
+            <input type="number" id="customRate" placeholder="Custom evt/min" min="100" max="340000">
+            <button class="btn btn-set" onclick="setCustomRate()">Set</button>
         </div>
     </div>
 
@@ -44,29 +53,36 @@
         </div>
     </div>
 
-    <div class="grid">
-        <div class="card">
+    <div class="chart-row">
+        <div class="chart-card">
             <h3>Queue Depths</h3>
-            <div class="counters-grid" id="queueDepths"></div>
+            <div class="queue-bars" id="queueDepths"></div>
         </div>
-        <div class="card">
-            <h3>Backpressure</h3>
-            <div class="value bp-inactive" id="bpStatus">Inactive</div>
-            <div class="sub">Input queue: <span id="inputQ">0</span> / 10,000</div>
-        </div>
-        <div class="card">
-            <h3>Rate</h3>
-            <div class="value" id="rateValue">1x</div>
-            <div class="sub">Multiplier</div>
-        </div>
-        <div class="card">
-            <h3>Total Processed</h3>
-            <div class="value" id="totalProcessed">0</div>
-            <div class="sub">Events</div>
+        <div class="card" style="display:flex; flex-direction:column; justify-content:center; gap:16px;">
+            <div>
+                <h3>Backpressure</h3>
+                <div class="value bp-inactive" id="bpStatus">Inactive</div>
+                <div class="sub">Input queue: <span id="inputQ">0</span> / 10,000</div>
+            </div>
+            <div>
+                <h3>Rate</h3>
+                <div class="value" id="rateValue">1x</div>
+                <div class="sub">Multiplier</div>
+            </div>
+            <div>
+                <h3>Total Processed</h3>
+                <div class="value" id="totalProcessed">0</div>
+                <div class="sub">Events</div>
+            </div>
         </div>
     </div>
 
-    <div class="chart-row">
+    <div class="chart-row-3">
+        <div class="chart-card">
+            <h3>Classification Split</h3>
+            <canvas id="classChart"></canvas>
+            <div class="class-rates" id="classRates"></div>
+        </div>
         <div class="chart-card">
             <h3>Latency per Tier (ms)</h3>
             <canvas id="latencyChart"></canvas>
