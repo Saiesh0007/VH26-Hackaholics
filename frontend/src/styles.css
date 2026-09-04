@@ -61,6 +61,15 @@ body { margin: 0; min-width: 320px; }
 .fade-up   { animation: fade-up 0.5s ease forwards; }
 .tile-in   { animation: tile-in 0.4s ease forwards; }
 
+@keyframes pulse-btn {
+  from { transform: scale(1);    box-shadow: 0 0 8px  currentColor; }
+  to   { transform: scale(1.03); box-shadow: 0 0 20px currentColor; }
+}
+@keyframes dot-blink {
+  from { opacity: 1; }
+  to   { opacity: 0.3; }
+}
+
 /* ─── Landing page tile hover ────────────────────────────────────────── */
 .tile:hover { transform: scale(1.06) rotate(-1deg); }
 
@@ -97,3 +106,5 @@ body { margin: 0; min-width: 320px; }
   transform: translateY(-4px);
   background: rgba(255,255,255,0.06) !important;
 }
+@keyframes flowLine { from { background-position: 0 0; } to { background-position: -12px 0; } }
+.flow-line-anim { animation: flowLine 0.5s linear infinite; }

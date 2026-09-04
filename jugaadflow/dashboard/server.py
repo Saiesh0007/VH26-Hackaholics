@@ -31,11 +31,29 @@ class RateRequest(BaseModel):
     events_per_min: float
 
 
+class EventSpikeRequest(BaseModel):
+    event_type: str
+    count: int = 500
+    duration_sec: float = 5.0
+
+
 class FloodRequest(BaseModel):
     tier2_count: int = 4500
     tier3_count: int = 1800
     tier4_count: int = 480
     input_count: int = 8000
+
+
+# Global registry: event_type -> (end_time, total_injected)
+_active_spikes: dict[str, dict] = {}
+
+EVENT_PAYLOAD_MAP = {
+    "payment":   (payloads.payment_payload,   "payment-gateway",   1),
+    "order":     (payloads.order_payload,      "order-service",     1),
+    "inventory": (payloads.inventory_payload,  "inventory-service", 2),
+    "click":     (payloads.click_payload,      "clickstream",       3),
+    "log":       (payloads.log_payload,        "app-logger",        4),
+}
 
 
 def create_app(
@@ -112,6 +130,54 @@ def create_app(
         app.state.naive_mode = False
         strategy.naive_mode = False
         return {"mode": "adaptive"}
+
+    @app.post("/api/event-spike")
+    async def event_spike(req: EventSpikeRequest):
+        """Inject a burst of a specific event type into the input queue."""
+        etype = req.event_type.lower()
+        if etype not in EVENT_PAYLOAD_MAP:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=f"Unknown event_type '{etype}'. Choose from: {list(EVENT_PAYLOAD_MAP.keys())}")
+
+        payload_fn, source_name, priority = EVENT_PAYLOAD_MAP[etype]
+        count = max(1, min(req.count, 50000))
+        injected = 0
+        dropped = 0
+
+        for _ in range(count):
+            evt = Event(type=etype, source=f"admin-spike/{source_name}", payload=payload_fn(), priority=priority)
+            try:
+                queues.input_queue.put_nowait(evt)
+                injected += 1
+            except asyncio.QueueFull:
+                dropped += 1
+
+        # Track active spike for dashboard highlighting
+        end_time = time.time() + req.duration_sec
+        _active_spikes[etype] = {
+            "end_time": end_time,
+            "count": count,
+            "injected": injected,
+            "dropped": dropped,
+            "started_at": time.strftime("%H:%M:%S"),
+        }
+
+        logger.info("Admin spike: %d %s events injected (%d dropped)", injected, etype, dropped)
+        return {
+            "status": "spike_injected",
+            "event_type": etype,
+            "injected": injected,
+            "dropped": dropped,
+        }
+
+    @app.get("/api/event-spike/active")
+    async def get_active_spikes():
+        now = time.time()
+        # Clean up expired
+        expired = [k for k, v in _active_spikes.items() if v["end_time"] < now]
+        for k in expired:
+            del _active_spikes[k]
+        return {"active_spikes": dict(_active_spikes)}
 
     @app.post("/api/flood")
     async def trigger_flood(req: FloodRequest = FloodRequest()):
@@ -383,6 +449,10 @@ def build_metrics_payload(
         "recent_events": list(metrics.recent_events),
         "recent_decisions": list(metrics.recent_decisions),
         "agent_activity": list(metrics.recent_agent_actions),
+        "active_spikes": {
+            k: v for k, v in _active_spikes.items()
+            if v["end_time"] > time.time()
+        },
         "agents_enabled": (
             getattr(app_ref.state, 'agent_state', None).agents_enabled
             if app_ref and getattr(app_ref.state, 'agent_state', None) else False

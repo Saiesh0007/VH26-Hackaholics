@@ -564,6 +564,50 @@ function Simulation() {
 
   const [flooding, setFlooding] = useState(false)
   const [floodResult, setFloodResult] = useState(null)
+  const [spiking, setSpiking] = useState({})
+  const [spikeDur, setSpikeDur] = useState(5)
+  const [spikeResults, setSpikeResults] = useState({})
+
+  const EVENT_SPIKE_CONFIG = [
+    { type: 'payment',   label: 'Payment',   tier: 'P1 — Critical',  color: '#16A34A', bg: '#DCFCE7', defaultCount: 1000 },
+    { type: 'order',     label: 'Order',     tier: 'P1 — Critical',  color: '#0284C7', bg: '#E0F2FE', defaultCount: 1000 },
+    { type: 'inventory', label: 'Inventory', tier: 'P2 — Important', color: '#7C3AED', bg: '#EDE9FE', defaultCount: 2000 },
+    { type: 'click',     label: 'Click',     tier: 'P3 — Normal',    color: '#EA580C', bg: '#FFF7ED', defaultCount: 4000 },
+    { type: 'log',       label: 'Log',       tier: 'P4 — Noise',     color: '#DC2626', bg: '#FEE2E2', defaultCount: 8000 },
+  ]
+
+  const [spikeCounts, setSpikeCounts] = useState(() =>
+    Object.fromEntries(EVENT_SPIKE_CONFIG.map(c => [c.type, c.defaultCount]))
+  )
+
+  const setSpikeCount = (type, val) =>
+    setSpikeCounts(prev => ({ ...prev, [type]: Math.max(0, Math.min(50000, val)) }))
+
+  const triggerSpike = useCallback(async (eventType, count) => {
+    setSpiking(prev => ({ ...prev, [eventType]: true }))
+    setSpikeResults(prev => ({ ...prev, [eventType]: null }))
+    try {
+      const res = await fetch('/api/event-spike', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_type: eventType, count, duration_sec: spikeDur }),
+      })
+      const json = await res.json()
+      setSpikeResults(prev => ({ ...prev, [eventType]: json }))
+    } catch (e) {
+      setSpikeResults(prev => ({ ...prev, [eventType]: { error: e.message } }))
+    }
+    setTimeout(() => setSpiking(prev => ({ ...prev, [eventType]: false })), spikeDur * 1000)
+  }, [spikeDur])
+
+  const fireAll = useCallback(async () => {
+    for (const cfg of EVENT_SPIKE_CONFIG) {
+      if ((spikeCounts[cfg.type] || 0) > 0) {
+        triggerSpike(cfg.type, spikeCounts[cfg.type])
+        await new Promise(r => setTimeout(r, 80))
+      }
+    }
+  }, [spikeCounts, triggerSpike])
 
   useEffect(() => {
     if (mode === null && data) {
@@ -607,6 +651,9 @@ function Simulation() {
   const evtSec         = data ? sumObj(data.throughput_per_sec) : 0
   const critLost       = data?.counters?.shed?.payment || 0
   const totalProcessed = data ? sumObj(data.counters?.processed) : 0
+
+  const totalQueued = EVENT_SPIKE_CONFIG.reduce((s, c) => s + (spikeCounts[c.type] || 0), 0)
+  const anyFiring   = EVENT_SPIKE_CONFIG.some(c => spiking[c.type])
 
   return (
     <Shell>
@@ -701,6 +748,162 @@ function Simulation() {
           </div>
         </Card>
       </div>
+
+      {/* Admin Event Spike Panel */}
+      <Card style={{ marginTop: 24 }}>
+        <div style={{
+          padding: '20px 24px', borderBottom: `1px solid ${C.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+        }}>
+          <div>
+            <h2 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Admin Event Spike</h2>
+            <p style={{ fontSize: 13, color: C.textSec, margin: '4px 0 0' }}>
+              Set exact request counts per event type, then fire individually or all at once
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Duration (s)</label>
+              <input
+                type="number" value={spikeDur} min={1} max={60} step={1}
+                onChange={e => setSpikeDur(Math.max(1, +e.target.value))}
+                style={{ width: 64, padding: '6px 8px', borderRadius: 6, border: `1.5px solid ${C.border}`, fontSize: 13, fontFamily: 'monospace', textAlign: 'center', background: '#fff' }}
+              />
+            </div>
+            <button
+              onClick={fireAll}
+              disabled={anyFiring || totalQueued === 0}
+              style={{
+                padding: '9px 20px', borderRadius: 8, fontSize: 13, fontWeight: 800,
+                cursor: (anyFiring || totalQueued === 0) ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit', border: 'none',
+                background: anyFiring ? '#FEE2E2' : C.accent,
+                color: anyFiring ? C.red : '#fff',
+                opacity: totalQueued === 0 ? 0.4 : 1,
+                display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
+              }}
+            >
+              <Zap size={14} />
+              {anyFiring ? 'Firing...' : `Fire All (${totalQueued.toLocaleString()} events)`}
+            </button>
+          </div>
+        </div>
+
+        {/* Column headers */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '200px 1fr 120px 160px 140px',
+          padding: '8px 24px', borderBottom: `1px solid ${C.border}`,
+          background: '#F7F5F0',
+        }}>
+          {['Event Type', 'Requests to Inject', 'Status', 'Last Result', 'Action'].map(h => (
+            <span key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>{h}</span>
+          ))}
+        </div>
+
+        {/* Per-type rows */}
+        {EVENT_SPIKE_CONFIG.map(({ type, label, tier, color, bg }) => {
+          const active   = spiking[type] || (data?.active_spikes?.[type] != null)
+          const result   = spikeResults[type]
+          const count    = spikeCounts[type] ?? 0
+          const wsInfo   = data?.active_spikes?.[type]
+          const secsLeft = wsInfo ? Math.max(0, Math.round(wsInfo.end_time - Date.now() / 1000)) : 0
+
+          return (
+            <div key={type} style={{
+              display: 'grid', gridTemplateColumns: '200px 1fr 120px 160px 140px',
+              alignItems: 'center', gap: 16, padding: '14px 24px',
+              borderBottom: `1px solid ${C.border}`,
+              background: active ? bg + '66' : 'transparent', transition: 'background 0.3s',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>{label}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: C.textMuted }}>{tier}</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="number" value={count} min={0} max={50000} step={100}
+                  onChange={e => setSpikeCount(type, +e.target.value)}
+                  disabled={!!spiking[type]}
+                  placeholder="0"
+                  style={{
+                    width: '100%', maxWidth: 160, padding: '8px 12px', borderRadius: 7,
+                    border: `2px solid ${active ? color : C.border}`,
+                    fontSize: 15, fontFamily: 'monospace', fontWeight: 700,
+                    textAlign: 'right', background: '#fff', color: C.text, outline: 'none',
+                    boxShadow: active ? `0 0 0 3px ${color}22` : 'none', transition: 'all 0.2s',
+                  }}
+                />
+                <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: 'nowrap' }}>requests</span>
+              </div>
+
+              <div>
+                {active ? (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '4px 10px', borderRadius: 99, background: bg, color,
+                    fontSize: 11, fontWeight: 700, border: `1px solid ${color}55`,
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block', animation: 'dot-blink 0.8s infinite alternate' }} />
+                    {secsLeft}s left
+                  </span>
+                ) : <span style={{ fontSize: 12, color: C.textMuted }}>Idle</span>}
+              </div>
+
+              <div style={{ fontSize: 11, color: C.textSec }}>
+                {result && !result.error ? (
+                  <span>
+                    <span style={{ color: C.green, fontWeight: 700 }}>{result.injected?.toLocaleString()}</span> injected
+                    {result.dropped > 0 && <span style={{ color: C.red }}>, {result.dropped} dropped</span>}
+                  </span>
+                ) : result?.error ? (
+                  <span style={{ color: C.red }}>Error</span>
+                ) : <span style={{ color: C.textMuted }}>—</span>}
+              </div>
+
+              <button
+                onClick={() => triggerSpike(type, count)}
+                disabled={!!spiking[type] || count === 0}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                  cursor: (spiking[type] || count === 0) ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  border: `2px solid ${active ? color : color + '55'}`,
+                  background: active ? bg : '#fff', color,
+                  opacity: count === 0 ? 0.3 : spiking[type] ? 0.7 : 1,
+                  transition: 'all 0.2s',
+                  boxShadow: active ? `0 0 12px ${color}44` : 'none',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  animation: active ? 'pulse-btn 1s ease-in-out infinite alternate' : 'none',
+                }}
+              >
+                <Zap size={13} />
+                {spiking[type] ? 'Firing...' : 'Spike'}
+              </button>
+            </div>
+          )
+        })}
+
+        <div style={{
+          padding: '12px 24px', background: '#F7F5F0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+        }}>
+          <p style={{ margin: 0, fontSize: 12, color: C.textMuted }}>
+            Total: <strong style={{ color: C.text }}>{totalQueued.toLocaleString()}</strong> requests queued across {EVENT_SPIKE_CONFIG.filter(c => spikeCounts[c.type] > 0).length} event types
+          </p>
+          <button
+            onClick={() => setSpikeCounts(Object.fromEntries(EVENT_SPIKE_CONFIG.map(c => [c.type, 0])))}
+            style={{
+              padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${C.border}`,
+              background: '#fff', color: C.textSec,
+            }}
+          >Clear all</button>
+        </div>
+      </Card>
     </Shell>
   )
 }
@@ -871,51 +1074,131 @@ function Pipeline() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, overflowX: 'auto', paddingBottom: 12 }}>
+        <div style={{
+          position: 'relative',
+          padding: '32px',
+          background: 'linear-gradient(145deg, #0A0A0A 0%, #171717 100%)',
+          borderRadius: 16,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 12px 32px rgba(0,0,0,0.15)',
+          overflowX: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 24,
+        }}>
+          {/* Animated Flow Line Definition */}
+          <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+            <defs>
+              <linearGradient id="flow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
+                <stop offset="50%" stopColor={C.accent} />
+                <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+              </linearGradient>
+            </defs>
+          </svg>
+
           {flowNodes.map((n, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <div style={{ borderRadius: 10, border: `2px solid ${C.border}`, background: '#fff', padding: '12px 14px', textAlign: 'center', minWidth: 110 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: C.text, margin: 0 }}>{n.label}</p>
-                {n.depth != null && <p style={{ fontFamily: 'monospace', fontSize: 18, fontWeight: 900, color: C.accent, margin: '3px 0 0' }}>{n.depth.toLocaleString()}</p>}
-                <p style={{ fontSize: 10, color: C.textMuted, margin: '2px 0 0' }}>{n.sub}</p>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+              <div style={{
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '16px 20px',
+                textAlign: 'center',
+                minWidth: 140,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                position: 'relative',
+                backdropFilter: 'blur(8px)',
+              }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0, letterSpacing: '0.02em' }}>{n.label}</p>
+                {n.depth != null && <p style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 900, color: C.accent, margin: '6px 0 0', textShadow: `0 0 12px ${C.accent}66` }}>{n.depth.toLocaleString()}</p>}
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '4px 0 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{n.sub}</p>
               </div>
-              {i < flowNodes.length - 1 && <ArrowRight size={16} color={C.textMuted} />}
+              {i < flowNodes.length - 1 && (
+                <div style={{ position: 'relative', width: 40, height: 2 }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.1)' }} />
+                  <div className="flow-line-anim" style={{ position: 'absolute', inset: 0, background: 'url("data:image/svg+xml,%3Csvg width=\'100%25\' height=\'2\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cline x1=\'0\' y1=\'1\' x2=\'100%25\' y2=\'1\' stroke=\'%23E8440A\' stroke-width=\'2\' stroke-dasharray=\'6 6\' /%3E%3C/svg%3E")' }} />
+                </div>
+              )}
             </div>
           ))}
-          <ArrowRight size={16} color={C.textMuted} style={{ marginTop: 20 }} />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+          <div style={{ position: 'relative', width: 40, height: 2 }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.1)' }} />
+            <div className="flow-line-anim" style={{ position: 'absolute', inset: 0, background: 'url("data:image/svg+xml,%3Csvg width=\'100%25\' height=\'2\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cline x1=\'0\' y1=\'1\' x2=\'100%25\' y2=\'1\' stroke=\'%23E8440A\' stroke-width=\'2\' stroke-dasharray=\'6 6\' /%3E%3C/svg%3E")' }} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }}>
             {tierNodes.map((t, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ borderRadius: 10, border: `2px solid ${t.color}55`, padding: '8px 12px', minWidth: 130 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: t.color }}>{t.label}</span>
-                    <ActionBadge action={t.action} />
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                <div style={{
+                  borderRadius: 12,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${t.color}44`,
+                  padding: '12px 16px',
+                  minWidth: 180,
+                  boxShadow: `0 4px 16px ${t.color}11`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: t.color }} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: t.color, textShadow: `0 0 8px ${t.color}44` }}>{t.label}</span>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
+                      background: t.action === 'process' ? 'rgba(22, 163, 74, 0.15)' : t.action === 'batch' ? 'rgba(245, 180, 0, 0.15)' : t.action === 'defer' ? 'rgba(232, 68, 10, 0.15)' : 'rgba(220, 38, 38, 0.15)',
+                      color: t.action === 'process' ? C.green : t.action === 'batch' ? C.amber : t.action === 'defer' ? C.accent : C.red,
+                      border: `1px solid ${t.action === 'process' ? C.green : t.action === 'batch' ? C.amber : t.action === 'defer' ? C.accent : C.red}44`
+                    }}>{t.action}</span>
                   </div>
-                  <p style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: C.text, margin: '3px 0 0' }}>
-                    {t.depth.toLocaleString()} <span style={{ fontSize: 10, color: C.textMuted }}>/ {t.max}</span>
+                  <p style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: '6px 0 0' }}>
+                    {t.depth.toLocaleString()} <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>/ {t.max}</span>
                   </p>
-                  {t.deferred != null && <p style={{ fontSize: 10, color: C.textMuted, margin: '2px 0 0' }}>deferred: {t.deferred}</p>}
+                  {t.deferred != null && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '4px 0 0' }}>deferred: <span style={{ color: C.amber }}>{t.deferred}</span></p>}
                 </div>
-                <ArrowRight size={14} color={C.textMuted} />
+                <div style={{ position: 'relative', width: 30, height: 2 }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.1)' }} />
+                  <div className="flow-line-anim" style={{ position: 'absolute', inset: 0, background: 'url("data:image/svg+xml,%3Csvg width=\'100%25\' height=\'2\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cline x1=\'0\' y1=\'1\' x2=\'100%25\' y2=\'1\' stroke=\'%23E8440A\' stroke-width=\'2\' stroke-dasharray=\'6 6\' /%3E%3C/svg%3E")' }} />
+                </div>
               </div>
             ))}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <div style={{ borderRadius: 10, border: `2px solid ${C.accent}`, background: C.accentLight, padding: '18px 14px', textAlign: 'center', minWidth: 96 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, margin: 0 }}>Workers</p>
-              <p style={{ fontFamily: 'monospace', fontSize: 28, fontWeight: 900, color: C.accent, margin: '3px 0 0' }}>8</p>
-              <p style={{ fontSize: 10, color: C.textSec, margin: '2px 0 0' }}>strict priority</p>
+            <div style={{
+              borderRadius: 16,
+              background: `linear-gradient(135deg, ${C.accent}22 0%, ${C.accent}05 100%)`,
+              border: `1px solid ${C.accent}66`,
+              padding: '24px 20px',
+              textAlign: 'center',
+              minWidth: 120,
+              boxShadow: `0 0 32px ${C.accent}22`,
+              backdropFilter: 'blur(8px)',
+            }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.accent, margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Workers</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 36, fontWeight: 900, color: 'rgba(255,255,255,0.95)', margin: '8px 0 0', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>8</p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', textTransform: 'uppercase', letterSpacing: '0.02em' }}>strict priority</p>
             </div>
           </div>
 
-          <ArrowRight size={16} color={C.textMuted} style={{ marginTop: 30 }} />
+          <div style={{ position: 'relative', width: 40, height: 2 }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.1)' }} />
+            <div className="flow-line-anim" style={{ position: 'absolute', inset: 0, background: 'url("data:image/svg+xml,%3Csvg width=\'100%25\' height=\'2\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cline x1=\'0\' y1=\'1\' x2=\'100%25\' y2=\'1\' stroke=\'%2316A34A\' stroke-width=\'2\' stroke-dasharray=\'6 6\' /%3E%3C/svg%3E")' }} />
+          </div>
 
-          <div style={{ borderRadius: 10, border: `2px solid ${C.border}`, background: '#fff', padding: '18px 14px', textAlign: 'center', flexShrink: 0, minWidth: 80, marginTop: 12 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: C.text, margin: 0 }}>Sink</p>
-            <p style={{ fontFamily: 'monospace', fontSize: 17, fontWeight: 900, color: C.green, margin: '3px 0 0' }}>{sumObj(data.counters?.processed).toLocaleString()}</p>
-            <p style={{ fontSize: 10, color: C.textMuted, margin: '2px 0 0' }}>processed</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{
+              borderRadius: 12,
+              background: 'rgba(22, 163, 74, 0.05)',
+              border: '1px solid rgba(22, 163, 74, 0.3)',
+              padding: '20px 24px',
+              textAlign: 'center',
+              minWidth: 140,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+            }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.9)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sink</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 900, color: C.green, margin: '6px 0 0', textShadow: `0 0 12px ${C.green}55` }}>{sumObj(data.counters?.processed).toLocaleString()}</p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '4px 0 0', textTransform: 'uppercase' }}>processed</p>
+            </div>
           </div>
         </div>
       </Card>
@@ -1200,7 +1483,7 @@ function AIAgents() {
             {enabled ? 'Active' : 'Disabled'}
           </p>
           <p style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>
-            {enabled ? 'Optimizer runs every 30s' : 'Set ANTHROPIC_API_KEY to activate'}
+            {enabled ? 'Optimizer runs every 30s' : 'Set GEMINI_API_KEY to activate'}
           </p>
         </Card>
 
