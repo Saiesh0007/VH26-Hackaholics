@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger("jugaadflow.agents")
 
-MODEL = os.environ.get("JUGAADFLOW_AGENT_MODEL", "gemini-2.0-flash")
+MODEL = os.environ.get("JUGAADFLOW_AGENT_MODEL", "gemini-2.5-flash")
 
 
 def get_client():

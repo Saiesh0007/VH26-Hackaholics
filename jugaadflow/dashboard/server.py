@@ -214,6 +214,8 @@ def create_app(
                 return {"error": "Twilio credentials not configured"}
 
             reason = "TEST: Simulated escalation — verifying voice call system"
+            import jugaadflow.agents.escalation as esc_module
+            esc_module.pending_call_reason = reason
             llm_client = get_llm_client()
             message = await _generate_call_message(llm_client, reason, metrics, queues)
 

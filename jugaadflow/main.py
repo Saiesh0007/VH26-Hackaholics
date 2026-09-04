@@ -66,13 +66,9 @@ async def main():
         logger.info("AI agents enabled (optimizer + evaluator)")
 
         if os.environ.get("TWILIO_ACCOUNT_SID"):
-            from jugaadflow.agents.escalation import escalation_monitor_loop
-            tasks.append(asyncio.create_task(
-                escalation_monitor_loop(thresholds, strategy, queues, metrics, agent_state)
-            ))
-            logger.info("Human escalation monitor enabled (Twilio)")
+            logger.info("Twilio escalation available (button-only, no auto-calls)")
         else:
-            logger.info("Human escalation disabled (no TWILIO_ACCOUNT_SID)")
+            logger.info("Twilio escalation disabled (no TWILIO_ACCOUNT_SID)")
     else:
         logger.info("AI agents disabled (no GEMINI_API_KEY)")
 

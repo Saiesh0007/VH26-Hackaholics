@@ -50,8 +50,8 @@ def _build_eval_prompt(agent_state: AgentState, after_snapshot) -> str:
 async def _safe_llm_call(client, user_msg: str) -> dict | None:
     try:
         from google.genai import types
-        response = await asyncio.wait_for(
-            client.aio.models.generate_content(
+        def _call():
+            return client.models.generate_content(
                 model=MODEL,
                 contents=user_msg,
                 config=types.GenerateContentConfig(
@@ -59,9 +59,8 @@ async def _safe_llm_call(client, user_msg: str) -> dict | None:
                     max_output_tokens=1024,
                     response_mime_type="application/json",
                 ),
-            ),
-            timeout=15.0,
-        )
+            )
+        response = await asyncio.wait_for(asyncio.to_thread(_call), timeout=15.0)
         text = response.text
         return json.loads(text)
     except asyncio.TimeoutError:

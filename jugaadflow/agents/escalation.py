@@ -123,8 +123,8 @@ async def _generate_call_message(client, reason: str, metrics: Metrics, queues: 
 
     try:
         from google.genai import types
-        response = await asyncio.wait_for(
-            client.aio.models.generate_content(
+        def _call():
+            return client.models.generate_content(
                 model=MODEL,
                 contents=user_msg,
                 config=types.GenerateContentConfig(
@@ -132,9 +132,8 @@ async def _generate_call_message(client, reason: str, metrics: Metrics, queues: 
                     max_output_tokens=512,
                     response_mime_type="application/json",
                 ),
-            ),
-            timeout=10.0,
-        )
+            )
+        response = await asyncio.wait_for(asyncio.to_thread(_call), timeout=15.0)
         result = json.loads(response.text)
         return result.get("message", STATIC_FALLBACK.format(reason=reason, level=LEVEL_NAMES.get(metrics.current_level, "UNKNOWN")))
     except Exception as e:
@@ -194,8 +193,8 @@ async def generate_conversation_reply(
 
     try:
         from google.genai import types
-        response = await asyncio.wait_for(
-            client.aio.models.generate_content(
+        def _call():
+            return client.models.generate_content(
                 model=MODEL,
                 contents=contents,
                 config=types.GenerateContentConfig(
@@ -203,9 +202,8 @@ async def generate_conversation_reply(
                     max_output_tokens=256,
                     response_mime_type="application/json",
                 ),
-            ),
-            timeout=10.0,
-        )
+            )
+        response = await asyncio.wait_for(asyncio.to_thread(_call), timeout=15.0)
         result = json.loads(response.text)
         reply = result.get("reply", "I didn't catch that. Could you repeat?")
         end_call = result.get("end_call", False)
