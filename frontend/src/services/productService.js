@@ -1,0 +1,70 @@
+export const products = [
+  {
+    id: "p1",
+    name: "AeroFlex Runner",
+    category: "Footwear",
+    price: 129,
+    stock: 248,
+    rating: 4.8,
+    color: "#dff2ef",
+    tag: "Fast mover",
+  },
+  {
+    id: "p2",
+    name: "Orbit Sound Pro",
+    category: "Electronics",
+    price: 249,
+    stock: 84,
+    rating: 4.7,
+    color: "#e8eef9",
+    tag: "New arrival",
+  },
+  {
+    id: "p3",
+    name: "Daybreak Carryall",
+    category: "Accessories",
+    price: 98,
+    stock: 132,
+    rating: 4.6,
+    color: "#f6eadb",
+    tag: "Staff pick",
+  },
+  {
+    id: "p4",
+    name: "Terra Knit Set",
+    category: "Apparel",
+    price: 149,
+    stock: 61,
+    rating: 4.9,
+    color: "#e9e5f5",
+    tag: "Limited",
+  },
+  {
+    id: "p5",
+    name: "Pulse Smartwatch",
+    category: "Electronics",
+    price: 199,
+    stock: 39,
+    rating: 4.5,
+    color: "#dfeaf3",
+    tag: "Trending",
+  },
+  {
+    id: "p6",
+    name: "Cloud Lounge Chair",
+    category: "Home",
+    price: 329,
+    stock: 17,
+    rating: 4.8,
+    color: "#f0e8df",
+    tag: "Premium",
+  },
+];
+import { apiRequest } from "./api";
+
+export const productService = {
+  list: async () => (await apiRequest("/products")).products,
+  find: async (id) => apiRequest(`/products/${id}`),
+  search: async (q) =>
+    (await apiRequest(`/products?search=${encodeURIComponent(q)}`)).products,
+};

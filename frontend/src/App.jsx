@@ -1,0 +1,1265 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  BrowserRouter,
+  useLocation,
+  useNavigate,
+  useParams,
+  Routes,
+  Route,
+  Link,
+  Navigate,
+} from "react-router-dom";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Box,
+  ChevronRight,
+  Clock3,
+  CreditCard,
+  Database,
+  Gauge,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  Search,
+  Server,
+  Settings,
+  ShoppingBag,
+  ShoppingCart,
+  SlidersHorizontal,
+  Truck,
+  Users,
+  Wifi,
+  X,
+} from "lucide-react";
+import { authService } from "./services/authService";
+import { products, productService } from "./services/productService";
+import { pipelineService, simulationService } from "./services/pipelineService";
+import { apiRequest } from "./services/api";
+
+const navCustomer = [
+  ["/shop", "Shop", ShoppingBag],
+  ["/orders", "Orders", Package],
+  ["/notifications", "Notifications", Activity],
+  ["/profile", "Profile", Users],
+];
+const navAdmin = [
+  ["/admin", "Overview", LayoutDashboard],
+  ["/admin/traffic", "Traffic", Wifi],
+  ["/admin/pipeline", "Pipeline", Activity],
+  ["/admin/queues", "Queues", Database],
+  ["/admin/events", "Events", Clock3],
+  ["/admin/decisions", "Decisions", SlidersHorizontal],
+  ["/admin/orders", "Orders", Package],
+  ["/admin/inventory", "Inventory", Box],
+  ["/admin/simulation", "Simulation", Gauge],
+  ["/admin/benchmarks", "Benchmarks", BarChart3],
+  ["/admin/alerts", "Alerts", AlertTriangle],
+  ["/admin/settings", "Settings", Settings],
+];
+function Auth({ children }) {
+  const [user, setUser] = useState(authService.current());
+  const login = async (e, p) => setUser(await authService.login(e, p));
+  const signup = async (n, e, p, r) =>
+    setUser(await authService.signup(n, e, p, r));
+  return (
+    <AuthCtx.Provider
+      value={{
+        user,
+        login,
+        signup,
+        logout: () => {
+          authService.logout();
+          setUser(null);
+        },
+      }}
+    >
+      {children}
+    </AuthCtx.Provider>
+  );
+}
+import { createContext, useContext } from "react";
+const AuthCtx = createContext(null);
+const useAuth = () => useContext(AuthCtx);
+function Protected({ role, children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (role && user.role !== role)
+    return <Navigate to={user.role === "admin" ? "/admin" : "/shop"} replace />;
+  return children;
+}
+function Button({ children, secondary = false, onClick, type = "button" }) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${secondary ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "bg-[#0f9d88] text-white hover:bg-[#087f6f]"}`}
+    >
+      {children}
+    </button>
+  );
+}
+function AuthPage({ signup = false }) {
+  const nav = useNavigate();
+  const { login, signup: register } = useAuth();
+  const [name, setName] = useState(""),
+    [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [role, setRole] = useState("customer");
+  return (
+    <div className="grid min-h-screen lg:grid-cols-[1fr_1.1fr] bg-white">
+      <div className="hidden lg:flex grid-bg flex-col justify-between bg-[#eef8f6] p-12">
+        <div className="flex items-center gap-3 font-bold text-xl">
+          <span className="grid size-9 place-items-center rounded-xl bg-[#0f9d88] text-white">
+            F
+          </span>{" "}
+          flashflow
+        </div>
+        <div>
+          <p className="mono mb-4 text-xs uppercase tracking-[.2em] text-[#0f9d88]">
+            Adaptive commerce infrastructure
+          </p>
+          <h1 className="max-w-lg text-5xl font-semibold leading-tight text-[#102a43]">
+            Keep every order moving, even when demand spikes.
+          </h1>
+          <p className="mt-6 max-w-md leading-7 text-slate-600">
+            A live control room for resilient commerce, from first product view
+            to payment confirmation.
+          </p>
+        </div>
+        <p className="text-xs text-slate-500">DEMO ENVIRONMENT · API READY</p>
+      </div>
+      <div className="flex items-center justify-center p-6">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            signup
+              ? await register(name, email, password, role)
+              : await login(email, password);
+            nav(
+              role === "admin" || email.includes("admin") ? "/admin" : "/shop",
+            );
+          }}
+          className="w-full max-w-md"
+        >
+          <div className="mb-10 lg:hidden flex items-center gap-3 font-bold text-xl">
+            <span className="grid size-9 place-items-center rounded-xl bg-[#0f9d88] text-white">
+              F
+            </span>{" "}
+            flashflow
+          </div>
+          <p className="mono text-xs uppercase tracking-[.18em] text-[#0f9d88]">
+            {signup ? "Create workspace access" : "Welcome back"}
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold text-[#102a43]">
+            {signup ? "Start your flow" : "Sign in to FlashFlow"}
+          </h2>
+          <p className="mt-2 text-slate-500">
+            {signup
+              ? "Choose a role for this demo environment."
+              : "Monitor your commerce network in real time."}
+          </p>
+          <div className="mt-8 flex flex-col gap-4">
+            {signup && (
+              <input
+                required
+                placeholder="Full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#0f9d88]"
+              />
+            )}
+            <input
+              required
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#0f9d88]"
+            />
+            <input
+              required
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#0f9d88]"
+            />
+            {signup && (
+              <>
+                <input
+                  required
+                  type="password"
+                  placeholder="Confirm password"
+                  className="rounded-lg border border-slate-200 px-4 py-3 outline-none focus:border-[#0f9d88]"
+                />
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="rounded-lg border border-slate-200 px-4 py-3"
+                >
+                  <option value="customer">Customer account</option>
+                  <option value="admin">Admin control room</option>
+                </select>
+              </>
+            )}
+            <Button type="submit">
+              {signup ? "Create account" : "Enter workspace"}{" "}
+              <ArrowRight size={16} />
+            </Button>
+          </div>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            {signup ? "Already have access? " : "New to FlashFlow? "}
+            <Link
+              className="font-semibold text-[#0f9d88]"
+              to={signup ? "/login" : "/signup"}
+            >
+              {signup ? "Sign in" : "Create an account"}
+            </Link>
+          </p>
+          <p className="mt-8 rounded-lg bg-slate-50 p-3 text-center text-xs text-slate-500">
+            Demo tip: use <b>admin@flashflow.dev</b> for the control room.
+          </p>
+        </form>
+      </div>
+    </div>
+  );
+}
+function Shell({ admin = false, children }) {
+  const { user, logout } = useAuth();
+  const loc = useLocation();
+  const nav = admin ? navAdmin : navCustomer;
+  return (
+    <div className="shell flex bg-[#f5f8fc]">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-5 lg:flex">
+        <Link
+          to={admin ? "/admin" : "/shop"}
+          className="flex items-center gap-3 px-2 text-lg font-bold text-[#102a43]"
+        >
+          <span className="grid size-8 place-items-center rounded-lg bg-[#0f9d88] text-sm text-white">
+            F
+          </span>{" "}
+          flashflow
+        </Link>
+        <div className="mt-10 flex flex-1 flex-col gap-1">
+          {nav.map(([to, label, Icon]) => (
+            <Link
+              key={to}
+              to={to}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${loc.pathname === to ? "nav-active" : "text-slate-500 hover:bg-slate-50"}`}
+            >
+              <Icon size={17} />
+              {label}
+            </Link>
+          ))}
+        </div>
+        <div className="border-t border-slate-100 pt-4">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid size-9 place-items-center rounded-full bg-[#dff2ef] text-sm font-bold text-[#087f6f]">
+              {user?.name?.[0]}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{user?.name}</p>
+              <p className="text-xs capitalize text-slate-400">{user?.role}</p>
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 text-sm text-slate-500"
+          >
+            <LogOut size={15} /> Log out
+          </button>
+        </div>
+      </aside>
+      <main className="min-w-0 flex-1">
+        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-5 lg:px-8">
+          <div className="flex items-center gap-3">
+            <span className="grid size-8 place-items-center rounded-lg bg-[#0f9d88] text-sm font-bold text-white lg:hidden">
+              F
+            </span>
+            <span className="mono text-xs uppercase tracking-widest text-slate-400">
+              {admin ? "Control room / " : "Store / "}
+              {loc.pathname.split("/").filter(Boolean).slice(-1)[0]}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden items-center gap-2 text-xs text-slate-500 sm:flex">
+              <span className="size-2 rounded-full bg-[#0f9d88]" /> Systems
+              nominal
+            </span>
+            {!admin && (
+              <Link
+                to="/cart"
+                className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-50"
+              >
+                <ShoppingCart size={19} />
+                <span className="absolute right-0 top-0 grid size-4 place-items-center rounded-full bg-[#ef6a5b] text-[10px] text-white">
+                  2
+                </span>
+              </Link>
+            )}
+          </div>
+        </header>
+        <div className="p-5 lg:p-8">{children}</div>
+      </main>
+    </div>
+  );
+}
+function PageTitle({ eyebrow, title, desc, action }) {
+  return (
+    <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div>
+        <p className="mono text-[11px] uppercase tracking-[.2em] text-[#0f9d88]">
+          {eyebrow}
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#102a43]">
+          {title}
+        </h1>
+        {desc && <p className="mt-2 text-sm text-slate-500">{desc}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+function Stat({ label, value, sub, critical = false }) {
+  return (
+    <div className="glass rounded-xl p-5">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p
+        className={`mt-3 text-3xl font-semibold ${critical ? "critical" : "text-[#102a43]"}`}
+      >
+        {value}
+      </p>
+      <p className="mt-2 text-xs text-slate-500">{sub}</p>
+    </div>
+  );
+}
+function ProductCard({ p, add }) {
+  return (
+    <div className="glass overflow-hidden rounded-xl">
+      <div
+        className="flex h-44 items-center justify-center"
+        style={{ background: p.color }}
+      >
+        <ShoppingBag size={54} strokeWidth={1} className="text-[#102a43]/30" />
+      </div>
+      <div className="p-4">
+        <div className="flex justify-between gap-3">
+          <div>
+            <p className="text-xs text-slate-400">{p.category}</p>
+            <h3 className="mt-1 font-semibold text-[#102a43]">{p.name}</h3>
+          </div>
+          <p className="font-semibold text-[#102a43]">${p.price}</p>
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <span className="text-xs text-slate-500">
+            ★ {p.rating} · {p.stock} in stock
+          </span>
+          <Button onClick={() => add(p)}>Add</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function Shop() {
+  const [q, setQ] = useState("");
+  const [catalog, setCatalog] = useState(products);
+  const [toast, setToast] = useState("");
+  useEffect(() => {
+    productService
+      .list()
+      .then(setCatalog)
+      .catch(() => {});
+  }, []);
+  const list = useMemo(
+    () =>
+      catalog.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q.toLowerCase()) ||
+          p.category.toLowerCase().includes(q.toLowerCase()),
+      ),
+    [catalog, q],
+  );
+  return (
+    <Shell>
+      <PageTitle
+        eyebrow="Customer store"
+        title="Good things, moving fast."
+        desc="A focused catalog powered by a resilient event pipeline."
+      />
+      <div className="mb-6 flex max-w-xl items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+        <Search size={18} className="text-slate-400" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search products or categories"
+          className="w-full outline-none text-sm"
+        />
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {list.map((p) => (
+          <ProductCard
+            key={p.id}
+            p={p}
+            add={(p) => {
+              setToast(`${p.name} added to cart`);
+              setTimeout(() => setToast(""), 2200);
+            }}
+          />
+        ))}
+      </div>
+      {toast && (
+        <div className="fixed bottom-6 right-6 rounded-lg bg-[#102a43] px-5 py-3 text-sm text-white shadow-xl">
+          {toast}
+        </div>
+      )}
+    </Shell>
+  );
+}
+function Cart() {
+  const nav = useNavigate();
+  return (
+    <Shell>
+      <PageTitle
+        eyebrow="Your bag"
+        title="Ready when you are."
+        desc="Checkout events are always routed through the critical path."
+      />
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <div className="glass rounded-xl p-5">
+          <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
+            <div className="grid size-16 place-items-center rounded-lg bg-[#dff2ef]">
+              <ShoppingBag className="text-[#0f9d88]" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold">AeroFlex Runner</h3>
+              <p className="text-sm text-slate-500">Size 10 · Sea glass</p>
+            </div>
+            <p className="font-semibold">$129</p>
+          </div>
+          <div className="flex items-center gap-4 pt-5">
+            <div className="grid size-16 place-items-center rounded-lg bg-[#e8eef9]">
+              <CreditCard className="text-[#5473a8]" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold">Orbit Sound Pro</h3>
+              <p className="text-sm text-slate-500">Midnight · Wireless</p>
+            </div>
+            <p className="font-semibold">$249</p>
+          </div>
+        </div>
+        <div className="glass rounded-xl p-5">
+          <h3 className="font-semibold">Order summary</h3>
+          <div className="mt-5 flex flex-col gap-3 text-sm text-slate-500">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>$378.00</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Shipping</span>
+              <span className="text-[#0f9d88]">Free</span>
+            </div>
+            <div className="mt-3 flex justify-between border-t border-slate-100 pt-4 text-base font-semibold text-[#102a43]">
+              <span>Total</span>
+              <span>$378.00</span>
+            </div>
+          </div>
+          <Button onClick={() => nav("/checkout")}>
+            <CreditCard size={16} /> Secure checkout
+          </Button>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+function Checkout() {
+  const nav = useNavigate();
+  const [done, setDone] = useState(false);
+  const [orderId, setOrderId] = useState("");
+  const [error, setError] = useState("");
+  const placeOrder = async () => {
+    try {
+      const result = await apiRequest("/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          items: [
+            { product_id: "p1", name: "", quantity: 1, price: 0 },
+            { product_id: "p2", name: "", quantity: 1, price: 0 },
+          ],
+          shipping_address: "Demo address",
+        }),
+      });
+      setOrderId(result.order.id);
+      setDone(true);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+  return (
+    <Shell>
+      <PageTitle
+        eyebrow="Critical path"
+        title={done ? "Order confirmed." : "Complete your order."}
+        desc={
+          done
+            ? "Your P0 events were accepted and inventory was reserved."
+            : "Payment, inventory, and order creation are protected from traffic shedding."
+        }
+      />
+      {done ? (
+        <div className="glass max-w-2xl rounded-xl p-8">
+          <div className="grid size-12 place-items-center rounded-full bg-[#dff2ef] text-[#0f9d88]">
+            <Activity />
+          </div>
+          <h2 className="mt-5 text-2xl font-semibold">
+            Thanks for flowing with us.
+          </h2>
+          <p className="mt-2 text-slate-500">
+            Order {orderId} is now processing. You can follow its status from
+            your order history.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Button onClick={() => nav("/orders")}>View order</Button>
+            <Button secondary onClick={() => nav("/shop")}>
+              Continue shopping
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <div className="glass rounded-xl p-6">
+            <h2 className="font-semibold">Shipping details</h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <input
+                placeholder="First name"
+                className="rounded-lg border border-slate-200 px-4 py-3"
+              />
+              <input
+                placeholder="Last name"
+                className="rounded-lg border border-slate-200 px-4 py-3"
+              />
+              <input
+                placeholder="Address"
+                className="rounded-lg border border-slate-200 px-4 py-3 sm:col-span-2"
+              />
+              <input
+                placeholder="City"
+                className="rounded-lg border border-slate-200 px-4 py-3"
+              />
+              <input
+                placeholder="Postal code"
+                className="rounded-lg border border-slate-200 px-4 py-3"
+              />
+            </div>
+            <h2 className="mt-8 font-semibold">Demo payment</h2>
+            <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#0f9d88] bg-[#eef8f6] p-4 text-sm">
+              <CreditCard size={18} className="text-[#0f9d88]" />
+              •••• 4242{" "}
+              <span className="ml-auto text-xs text-slate-500">Demo only</span>
+            </div>
+          </div>
+          <div className="glass rounded-xl p-5">
+            <h3 className="font-semibold">$378.00 total</h3>
+            <p className="mt-2 text-sm text-slate-500">Ships free · 2 items</p>
+            {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+            <Button onClick={placeOrder}>
+              Place order <ArrowRight size={16} />
+            </Button>
+          </div>
+        </div>
+      )}
+    </Shell>
+  );
+}
+function Orders() {
+  const [orders, setOrders] = useState([]);
+  useEffect(() => {
+    apiRequest("/orders")
+      .then((result) => setOrders(result.orders))
+      .catch(() => {});
+  }, []);
+  return (
+    <Shell>
+      <PageTitle
+        eyebrow="Customer account"
+        title="Orders"
+        desc="Recent orders and their pipeline state."
+      />
+      <div className="glass overflow-hidden rounded-xl">
+        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 border-b border-slate-100 px-5 py-3 text-xs uppercase tracking-wide text-slate-400">
+          <span>Order</span>
+          <span>Date</span>
+          <span>Status</span>
+          <span>Total</span>
+        </div>
+        {orders.map((order, i) => (
+          <Link
+            to={`/orders/${order.id}`}
+            key={order.id}
+            className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-4 border-b border-slate-100 px-5 py-5 text-sm last:border-0 hover:bg-slate-50"
+          >
+            <span className="font-semibold">
+              {order.id}
+              <small className="block font-normal text-slate-400">
+                {order.items?.length || 0} items
+              </small>
+            </span>
+            <span className="text-slate-500">
+              {new Date(order.created_at).toLocaleDateString()}
+            </span>
+            <span>
+              <span className="rounded-full bg-[#e6f5f2] px-2.5 py-1 text-xs font-medium text-[#087f6f]">
+                {order.status}
+              </span>
+            </span>
+            <span className="font-semibold">
+              ${Number(order.total).toFixed(2)}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </Shell>
+  );
+}
+function Admin() {
+  const [m, setM] = useState({
+    traffic: 14280,
+    events_per_sec: 220,
+    queue_depth: 1750,
+    pressure: 68,
+    deferred: 38,
+    batched: 76,
+    shed: 12,
+    critical_lost: 0,
+    backpressure: "Contained",
+    queues: [
+      { priority: "P0", label: "Critical", pressure: 12 },
+      { priority: "P1", label: "High", pressure: 34 },
+      { priority: "P2", label: "Normal", pressure: 61 },
+      { priority: "P3", label: "Low", pressure: 82 },
+    ],
+  });
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await pipelineService.metrics();
+        setM(data);
+      } catch (_) {}
+    };
+    load();
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, []);
+  const queues = m.queues || [];
+  const colors = ["#ef6a5b", "#e7a93f", "#5473a8", "#0f9d88"];
+  return (
+    <Shell admin>
+      <PageTitle
+        eyebrow="Live control room"
+        title="Adaptive pipeline overview"
+        desc="Updated just now · polling every 3 seconds"
+        action={
+          <Button secondary>
+            <Activity size={16} /> Live metrics
+          </Button>
+        }
+      />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Stat
+          label="Current traffic"
+          value={`${((m.traffic || 0) / 1000).toFixed(1)}k/min`}
+          sub="+18.4% vs baseline"
+        />
+        <Stat
+          label="Events / sec"
+          value={m.events_per_sec || m.events || 220}
+          sub={`Processing rate ${m.backpressure === "Active" ? "↑ high" : "94.9%"}`}
+        />
+        <Stat
+          label="Queue depth"
+          value={(m.queue_depth || m.queueDepth || 1750).toLocaleString()}
+          sub={`${Math.round(m.pressure || 68)}% pressure`}
+        />
+        <Stat
+          label="Critical events lost"
+          value={m.critical_lost || 0}
+          sub="P0 invariant holding"
+          critical
+        />
+      </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <div className="glass rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold">Traffic & throughput</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Last 30 minutes · live stream
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${m.backpressure === "Active" ? "bg-[#fff0ed] text-[#c95043]" : "bg-[#e6f5f2] text-[#087f6f]"}`}
+            >
+              {m.backpressure === "Active" ? "Backpressure" : "Healthy"}
+            </span>
+          </div>
+          <div className="mt-8 flex h-48 items-end gap-2">
+            {Array.from({ length: 30 }, (_, i) => (
+              <div
+                key={i}
+                className="flex-1 rounded-t-sm bg-[#b9e5dc]"
+                style={{ height: `${35 + ((i * 17) % 55)}%` }}
+              >
+                <div
+                  className="h-full rounded-t-sm bg-[#0f9d88]"
+                  style={{ height: `${45 + ((i * 11) % 45)}%` }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-between text-xs text-slate-400">
+            <span>-30m</span>
+            <span>-15m</span>
+            <span>Now</span>
+          </div>
+        </div>
+        <div className="glass rounded-xl p-6">
+          <h2 className="font-semibold">Queue pressure</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Adaptive decisions by priority
+          </p>
+          <div className="mt-7 flex flex-col gap-5">
+            {queues.map((q, i) => (
+              <div key={q.priority}>
+                <div className="mb-2 flex justify-between text-sm">
+                  <span className="font-semibold">
+                    {q.priority}{" "}
+                    <span className="font-normal text-slate-400">
+                      {q.label}
+                    </span>
+                  </span>
+                  <span className="mono text-xs text-slate-500">
+                    {Math.round(q.pressure || 0)}%
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100">
+                  <div
+                    className="h-2 rounded-full"
+                    style={{
+                      width: `${q.pressure || 0}%`,
+                      background: colors[i],
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <Stat
+          label="Deferred events"
+          value={m.deferred || 0}
+          sub="P2/P3 under load"
+        />
+        <Stat
+          label="Batched events"
+          value={m.batched || 0}
+          sub="Efficiently grouped"
+        />
+        <Stat label="Shed events" value={m.shed || 0} sub="Non-critical only" />
+      </div>
+    </Shell>
+  );
+}
+function AdminTable({ kind = "events" }) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (kind === "decisions") {
+          const r = await pipelineService.decisions();
+          setRows(r);
+        } else {
+          const r = await pipelineService.events();
+          setRows(r);
+        }
+      } catch (_) {}
+    };
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, [kind]);
+  return (
+    <Shell admin>
+      <PageTitle
+        eyebrow="Observability"
+        title={kind === "decisions" ? "Decision explorer" : "Event stream"}
+        desc="Live events from the adaptive decision engine."
+      />
+      <div className="glass overflow-auto rounded-xl">
+        <table className="w-full min-w-200 text-left text-sm">
+          <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              {(kind === "decisions"
+                ? [
+                    "Event ID",
+                    "Event type",
+                    "Priority",
+                    "Decision",
+                    "Queue pressure",
+                    "Worker load",
+                    "Timestamp",
+                    "Reason",
+                  ]
+                : [
+                    "Event ID",
+                    "Event type",
+                    "Priority",
+                    "Queue",
+                    "Decision",
+                    "Timestamp",
+                  ]
+              ).map((x) => (
+                <th key={x} className="px-5 py-4 font-medium">
+                  {x}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((e) => (
+              <tr
+                key={e.id}
+                className="border-b border-slate-100 last:border-0"
+              >
+                <td className="mono px-5 py-4 text-xs">{e.id}</td>
+                <td className="px-5 py-4 font-medium">
+                  {e.type || e.event_type}
+                </td>
+                <td className="px-5 py-4">
+                  <span
+                    className={`rounded px-2 py-1 text-xs font-bold ${e.priority === "P0" ? "bg-[#fff0ed] text-[#c95043]" : "bg-slate-100 text-slate-600"}`}
+                  >
+                    {e.priority}
+                  </span>
+                </td>
+                <td className="px-5 py-4">
+                  {kind === "decisions" ? e.decision : e.queue}
+                </td>
+                <td className="px-5 py-4">
+                  {kind === "decisions"
+                    ? `${e.queue_pressure ?? e.pressure}%`
+                    : e.decision}
+                </td>
+                {kind === "decisions" && (
+                  <>
+                    <td className="px-5 py-4">{e.worker_load ?? e.worker}%</td>
+                    <td className="mono px-5 py-4 text-xs">
+                      {e.timestamp || e.time}
+                    </td>
+                    <td className="px-5 py-4 text-slate-500">{e.reason}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Shell>
+  );
+}
+function Queues() {
+  return (
+    <Shell admin>
+      <PageTitle
+        eyebrow="Pipeline health"
+        title="Queue monitor"
+        desc="P0 is protected by design. No critical event is ever shed."
+      />
+      <div className="grid gap-5 md:grid-cols-2">
+        {[
+          ["P0", "Critical", "42", "12%", "0", "0"],
+          ["P1", "High", "96", "34%", "8", "0"],
+          ["P2", "Normal", "184", "61%", "22", "3"],
+          ["P3", "Low", "612", "82%", "38", "9"],
+        ].map(([p, n, d, pr, de, sh]) => (
+          <div className="glass rounded-xl p-6" key={p}>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="mono text-2xl font-bold text-[#102a43]">
+                  {p}
+                </span>
+                <span className="ml-3 text-sm text-slate-500">{n}</span>
+              </div>
+              <span className="rounded-full bg-[#e6f5f2] px-2.5 py-1 text-xs font-semibold text-[#087f6f]">
+                Active
+              </span>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-5">
+              <div>
+                <p className="text-xs text-slate-400">Current depth</p>
+                <p className="mt-1 text-2xl font-semibold">{d}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Pressure</p>
+                <p className="mt-1 text-2xl font-semibold">{pr}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Deferred</p>
+                <p className="mt-1 font-semibold">{de}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">Shed</p>
+                <p
+                  className={`mt-1 font-semibold ${p === "P0" ? "signal" : ""}`}
+                >
+                  {sh}
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-500">
+              Capacity 1,000 · Processing 184 events/sec · P95 latency 42ms
+            </div>
+          </div>
+        ))}
+      </div>
+    </Shell>
+  );
+}
+function Simulation() {
+  const [mode, setMode] = useState("Normal");
+  const [rate, setRate] = useState(4000);
+  const [running, setRunning] = useState(false);
+  const [liveStats, setLiveStats] = useState({
+    events_ingested: 0,
+    p0_lost: 0,
+    backpressure: "Contained",
+  });
+  const extreme = rate > 15000;
+  const high = rate > 8000;
+  const handleRateChange = async (v) => {
+    setRate(v);
+    if (running) {
+      try {
+        await simulationService.setRate(v);
+      } catch (_) {}
+    }
+  };
+  const handleStart = async () => {
+    try {
+      await simulationService.start({ mode, rate });
+      setRunning(true);
+    } catch (_) {
+      setRunning(true);
+    }
+  };
+  const handleStop = async () => {
+    try {
+      await simulationService.stop();
+      setRunning(false);
+    } catch (_) {
+      setRunning(false);
+    }
+  };
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(async () => {
+      try {
+        const s = await simulationService.state();
+        setLiveStats({
+          events_ingested: s.events_ingested,
+          p0_lost: s.p0_lost,
+          backpressure: s.backpressure,
+        });
+      } catch (_) {}
+    }, 3000);
+    return () => clearInterval(t);
+  }, [running]);
+  return (
+    <Shell admin>
+      <PageTitle
+        eyebrow="Traffic lab"
+        title="Big Billion Days simulator"
+        desc="Model traffic spikes and observe adaptive routing decisions."
+      />
+      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+        <div className="glass rounded-xl p-6">
+          <h2 className="font-semibold">Scenario</h2>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {["Normal", "Big Billion Days", "Stress", "Recovery"].map((x) => (
+              <button
+                onClick={() => setMode(x)}
+                key={x}
+                className={`rounded-lg border px-3 py-2 text-sm ${mode === x ? "border-[#0f9d88] bg-[#eef8f6] text-[#087f6f]" : "border-slate-200 text-slate-500"}`}
+              >
+                {x}
+              </button>
+            ))}
+          </div>
+          <label className="mt-8 block text-sm font-medium">
+            Traffic rate{" "}
+            <span className="float-right mono text-[#0f9d88]">
+              {rate.toLocaleString()} / min
+            </span>
+          </label>
+          <input
+            className="mt-5 w-full accent-[#0f9d88]"
+            type="range"
+            min="1000"
+            max="50000"
+            step="1000"
+            value={rate}
+            onChange={(e) => handleRateChange(+e.target.value)}
+          />
+          <div className="mt-2 flex justify-between text-xs text-slate-400">
+            <span>1k</span>
+            <span>50k</span>
+          </div>
+          {running && (
+            <p className="mt-3 flex items-center gap-2 text-xs text-[#0f9d88]">
+              <span className="size-2 rounded-full bg-[#0f9d88] animate-pulse" />{" "}
+              Simulation running
+            </p>
+          )}
+          <div className="mt-8 flex gap-3">
+            <Button onClick={handleStart} disabled={running}>
+              <Activity size={16} /> {running ? "Running…" : "Start"}
+            </Button>
+            <Button secondary onClick={handleStop} disabled={!running}>
+              Stop
+            </Button>
+          </div>
+        </div>
+        <div className="glass rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold">Decision preview</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {mode} · {rate.toLocaleString()} events/min
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${extreme ? "bg-[#fff0ed] text-[#c95043]" : "bg-[#fff8e8] text-[#a36b00]"}`}
+            >
+              {extreme ? "Backpressure" : "Contained"}
+            </span>
+          </div>
+          <div className="mt-8 flex flex-col gap-4">
+            {[
+              ["P0", "Stream", "Critical operations always flow"],
+              ["P1", "Stream", "Checkout and order events"],
+              ["P2", extreme ? "Defer" : "Stream", "Normal activity"],
+              [
+                "P3",
+                extreme ? "Shed" : high ? "Batch" : "Batch",
+                "Analytics and low priority",
+              ],
+            ].map(([p, d, r]) => (
+              <div
+                className="flex items-center gap-4 rounded-lg border border-slate-100 p-4"
+                key={p}
+              >
+                <span className="mono font-bold">{p}</span>
+                <ChevronRight size={16} className="text-slate-300" />
+                <span
+                  className={`rounded px-3 py-1 text-xs font-bold ${d === "Shed" ? "bg-[#fff0ed] text-[#c95043]" : d === "Defer" ? "bg-[#fff8e8] text-[#a36b00]" : "bg-[#e6f5f2] text-[#087f6f]"}`}
+                >
+                  {d}
+                </span>
+                <span className="text-sm text-slate-500">{r}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 grid grid-cols-3 gap-3">
+            <Stat
+              label="Ingested"
+              value={
+                running
+                  ? liveStats.events_ingested.toLocaleString()
+                  : (rate / 60).toFixed(0)
+              }
+              sub={running ? "total events" : "events/sec"}
+            />
+            <Stat label="P0 lost" value="0" sub="Invariant" critical />
+            <Stat
+              label="Backpressure"
+              value={
+                extreme || liveStats.backpressure === "Active" ? "ON" : "OFF"
+              }
+              sub="Adaptive"
+            />
+          </div>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+function Generic({ title }) {
+  return (
+    <Shell admin>
+      <PageTitle
+        eyebrow="Control room"
+        title={title}
+        desc="This operational view is ready for live FastAPI metrics."
+      />
+      <div className="glass rounded-xl p-10 text-center">
+        <Server className="mx-auto text-[#0f9d88]" size={38} />
+        <h2 className="mt-4 text-xl font-semibold">
+          Connected to mock telemetry
+        </h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+          Swap the service implementation for your FastAPI endpoints using
+          VITE_API_BASE_URL. The page structure and role protection are already
+          in place.
+        </p>
+      </div>
+    </Shell>
+  );
+}
+function App() {
+  return (
+    <Auth>
+      <Routes>
+        <Route path="/login" element={<AuthPage />} />
+        <Route path="/signup" element={<AuthPage signup />} />
+        <Route path="/" element={<Home />} />
+        <Route
+          path="/shop"
+          element={
+            <Protected>
+              <Shop />
+            </Protected>
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <Protected>
+              <Cart />
+            </Protected>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <Protected>
+              <Checkout />
+            </Protected>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <Protected>
+              <Orders />
+            </Protected>
+          }
+        />
+        <Route
+          path="/orders/:id"
+          element={
+            <Protected>
+              <Orders />
+            </Protected>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <Protected>
+              <Generic title="Profile" />
+            </Protected>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <Protected>
+              <Generic title="Notifications" />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Protected role="admin">
+              <Admin />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/queues"
+          element={
+            <Protected role="admin">
+              <Queues />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/events"
+          element={
+            <Protected role="admin">
+              <AdminTable />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/decisions"
+          element={
+            <Protected role="admin">
+              <AdminTable kind="decisions" />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/simulation"
+          element={
+            <Protected role="admin">
+              <Simulation />
+            </Protected>
+          }
+        />
+        {[
+          "traffic",
+          "pipeline",
+          "orders",
+          "inventory",
+          "benchmarks",
+          "alerts",
+          "settings",
+        ].map((x) => (
+          <Route
+            key={x}
+            path={`/admin/${x}`}
+            element={
+              <Protected role="admin">
+                <Generic title={x[0].toUpperCase() + x.slice(1)} />
+              </Protected>
+            }
+          />
+        ))}
+      </Routes>
+    </Auth>
+  );
+}
+function Home() {
+  const { user } = useAuth();
+  return (
+    <Navigate
+      to={user ? (user.role === "admin" ? "/admin" : "/shop") : "/login"}
+      replace
+    />
+  );
+}
+export default function Root() {
+  return (
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  );
+}
