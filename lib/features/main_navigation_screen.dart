@@ -10,6 +10,7 @@ import 'incidents/incidents_screen.dart';
 import 'shedding/load_shedding_screen.dart';
 import 'settings/settings_screen.dart';
 import 'demo/demo_banner.dart';
+import 'voice/voice_assistant_dialog.dart';
 import '../core/theme/app_colors.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -171,6 +172,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           Expanded(child: _pages[_currentIndex]),
         ],
       ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: AppColors.orangeGlowShadow,
+        ),
+        child: FloatingActionButton(
+          onPressed: () => VoiceAssistantDialog.show(context),
+          backgroundColor: AppColors.primary,
+          elevation: 6,
+          tooltip: 'Ask FlowMind',
+          shape: const CircleBorder(),
+          child: const Icon(Icons.mic_rounded, color: Colors.white, size: 28),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppColors.surface,

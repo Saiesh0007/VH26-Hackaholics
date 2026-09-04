@@ -117,51 +117,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
-        actions: [
-          // Ask FlowMind Voice Assistant Button
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => const VoiceAssistantDialog(),
-                );
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.cardBorder, width: 0.8),
-                ),
-                child: const Icon(Icons.mic_rounded, size: 18, color: AppColors.primary),
-              ),
-            ),
-          ),
-          // Demo Mode Trigger Button
-          Padding(
-            padding: const EdgeInsets.only(right: 14),
-            child: InkWell(
-              onTap: () {
-                ref.read(demoProvider.notifier).startDemo();
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.cardBorder, width: 0.8),
-                ),
-                child: const Icon(Icons.play_arrow_rounded, size: 20, color: AppColors.textPrimary),
-              ),
-            ),
-          ),
-        ],
+        actions: const [],
       ),
       body: metricsAsync.when(
         data: (metrics) {

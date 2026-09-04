@@ -46,4 +46,36 @@ class PipelineMetrics {
       timestamp: DateTime.now(),
     );
   }
+
+  PipelineMetrics copyWith({
+    int? eventRatePerMin,
+    int? throughputPerSec,
+    double? systemLoadPercentage,
+    double? queuePressurePercentage,
+    double? p0LatencyMs,
+    double? p1LatencyMs,
+    double? p2LatencyMs,
+    double? p3LatencyMs,
+    int? criticalEventsLost,
+    int? totalDeferredCount,
+    int? totalShedCount,
+    double? workerUtilization,
+    DateTime? timestamp,
+  }) {
+    return PipelineMetrics(
+      eventRatePerMin: eventRatePerMin ?? this.eventRatePerMin,
+      throughputPerSec: throughputPerSec ?? this.throughputPerSec,
+      systemLoadPercentage: systemLoadPercentage ?? this.systemLoadPercentage,
+      queuePressurePercentage: queuePressurePercentage ?? this.queuePressurePercentage,
+      p0LatencyMs: p0LatencyMs ?? this.p0LatencyMs,
+      p1LatencyMs: p1LatencyMs ?? this.p1LatencyMs,
+      p2LatencyMs: p2LatencyMs ?? this.p2LatencyMs,
+      p3LatencyMs: p3LatencyMs ?? this.p3LatencyMs,
+      criticalEventsLost: criticalEventsLost ?? this.criticalEventsLost,
+      totalDeferredCount: totalDeferredCount ?? this.totalDeferredCount,
+      totalShedCount: totalShedCount ?? this.totalShedCount,
+      workerUtilization: workerUtilization ?? this.workerUtilization,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
 }

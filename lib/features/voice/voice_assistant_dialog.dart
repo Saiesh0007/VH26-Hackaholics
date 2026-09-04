@@ -7,6 +7,13 @@ import '../../core/theme/app_colors.dart';
 class VoiceAssistantDialog extends ConsumerStatefulWidget {
   const VoiceAssistantDialog({super.key});
 
+  static Future<T?> show<T>(BuildContext context) {
+    return showDialog<T>(
+      context: context,
+      builder: (_) => const VoiceAssistantDialog(),
+    );
+  }
+
   @override
   ConsumerState<VoiceAssistantDialog> createState() => _VoiceAssistantDialogState();
 }

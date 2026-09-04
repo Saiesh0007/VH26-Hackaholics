@@ -4,6 +4,7 @@ import '../models/pipeline_metrics.dart';
 import '../models/queue_metrics.dart';
 import '../models/pipeline_policy.dart';
 import '../core/constants/app_constants.dart';
+import '../core/constraints/classification_constraints.dart';
 
 class PipelineRuntime {
   final Random _random = Random();
@@ -45,7 +46,7 @@ class PipelineRuntime {
 
     // 1. Generate Ingestion Workload & Enqueue based on Policy
     for (int i = 0; i < clampedEventsPerSec; i++) {
-      final priority = _pickPriorityWeighted();
+      final priority = _classifyIncomingEvent();
       final policy = _activePolicy.policies[priority] ??
           PriorityPolicy(
             priority: priority,
@@ -176,13 +177,30 @@ class PipelineRuntime {
     }).toList();
   }
 
-  WorkloadPriority _pickPriorityWeighted() {
+  WorkloadPriority _classifyIncomingEvent() {
     final roll = _random.nextDouble();
-    if (roll < 0.15) return WorkloadPriority.p0Payment;
-    if (roll < 0.30) return WorkloadPriority.p0Order;
-    if (roll < 0.50) return WorkloadPriority.p1Inventory;
-    if (roll < 0.75) return WorkloadPriority.p2Activity;
-    return WorkloadPriority.p3Log;
+    String eventType;
+    double? transactionValue;
+
+    if (roll < 0.15) {
+      eventType = 'payment.webhook.charge';
+      transactionValue = 49.99 + _random.nextInt(500);
+    } else if (roll < 0.30) {
+      eventType = 'order.fulfillment.created';
+      transactionValue = 29.99;
+    } else if (roll < 0.50) {
+      eventType = 'inventory.warehouse.sync';
+    } else if (roll < 0.75) {
+      eventType = 'activity.user.clickstream';
+    } else {
+      eventType = 'system.telemetry.debug_log';
+    }
+
+    // Deterministic constraint-based classification decoupled from AI agents:
+    return ClassificationConstraints.classify(
+      eventType: eventType,
+      transactionValue: transactionValue,
+    );
   }
 
   void _addRecentEvent({

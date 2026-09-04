@@ -5,12 +5,16 @@ import '../models/pipeline_policy.dart';
 import '../models/processing_decision.dart';
 import 'safety_guard.dart';
 import 'agent_memory.dart';
+import 'optimizer_agent.dart';
+import 'evaluator_agent.dart';
 import '../simulation/pipeline_runtime.dart';
 import '../core/constants/app_constants.dart';
 
 class FlowMindAgent {
   final SafetyGuard safetyGuard = SafetyGuard();
   final AgentMemory agentMemory = AgentMemory();
+  final OptimizerAgent optimizer = OptimizerAgent();
+  final EvaluatorAgent evaluator = EvaluatorAgent();
 
   FlowMindState _currentState = FlowMindState.stable;
   String _currentObjective = 'Protect critical workloads & maintain baseline latency';
@@ -38,34 +42,47 @@ class FlowMindAgent {
 
   /// FlowMind Autonomous Control Loop step called every simulation tick
   void runControlLoop(PipelineRuntime runtime, PipelineMetrics metrics) {
-    _logTimeline('OBSERVE: Traffic ${metrics.eventRatePerMin} events/min | Load ${metrics.systemLoadPercentage.toInt()}% | P0 Latency ${metrics.p0LatencyMs.toInt()}ms');
+    _logTimeline('OBSERVE: Traffic ${metrics.eventRatePerMin} e/min | Load ${metrics.systemLoadPercentage.toInt()}% | P0 Latency ${metrics.p0LatencyMs.toInt()}ms');
 
-    // Step 1: Detect Anomaly / Condition Assessment
+    // PHASE 1: EVALUATOR AGENT AUDIT (Comparative Analysis & Rollback Check)
+    final didRollback = evaluator.evaluateAndAudit(runtime, metrics);
+    if (didRollback) {
+      _currentState = FlowMindState.warning;
+      _activeActionDescription = evaluator.latestVerdict;
+      _logTimeline('EVALUATOR AGENT ROLLBACK: Suboptimal constraints reverted to prior state.');
+      return;
+    }
+
+    // PHASE 2: HEALTH & CONDITION ASSESSMENT
     final multiplier = (metrics.eventRatePerMin / 1000).round();
     if (metrics.eventRatePerMin >= 15000) {
       _currentState = FlowMindState.warning;
       _currentCondition = 'CRITICAL SURGE: ${multiplier}× Traffic Surge Active (${metrics.eventRatePerMin} e/min)';
-      _currentObjective = 'PROTECT P0 PAYMENTS/ORDERS; Mitigate queue saturation';
+      _currentObjective = 'PROTECT P0 PAYMENTS/ORDERS; Dynamic constraint tuning active';
     } else if (metrics.eventRatePerMin > 3000) {
       _currentState = FlowMindState.analyzing;
       _currentCondition = 'ELEVATED TRAFFIC: ${multiplier}× Moderate surge (${metrics.eventRatePerMin} e/min)';
-      _currentObjective = 'Prevent queue pressure spillover into P0 queues';
+      _currentObjective = 'Optimizer dynamically tuning batch & worker allocations';
     } else {
       if (_currentState != FlowMindState.stable) {
         _currentState = FlowMindState.recovering;
         _currentCondition = 'RECOVERY: Traffic normalizing (${metrics.eventRatePerMin} e/min)';
-        _currentObjective = 'Draining deferred queues & restoring streaming defaults';
+        _currentObjective = 'Restoring baseline streaming constraints';
       }
     }
 
-    // Step 2 & 3: Reason & Formulate Candidate Policy
-    final candidatePolicy = _formulatePolicy(runtime.activePolicy, metrics);
+    // PHASE 3: OPTIMIZER AGENT ANALYZES METRICS & TUNES CONSTRAINTS
+    final candidatePolicy = optimizer.analyzeAndTuneConstraints(
+      runtime: runtime,
+      metrics: metrics,
+      evaluator: evaluator,
+    );
 
     if (candidatePolicy != null) {
       _currentState = FlowMindState.proposing;
-      _logTimeline('PROPOSE: Formulated policy adaptation for queue pressure mitigation');
+      _logTimeline('OPTIMIZER PROPOSAL: ${candidatePolicy.reason}');
 
-      // Step 4: Validate Policy with SafetyGuard
+      // SafetyGuard Verification
       _currentState = FlowMindState.validating;
       final safetyCheck = safetyGuard.validatePolicy(candidatePolicy);
 
@@ -74,7 +91,7 @@ class FlowMindAgent {
         _previousPolicy = runtime.activePolicy;
         runtime.setPolicy(candidatePolicy);
         _activeActionDescription = candidatePolicy.reason;
-        _logTimeline('EXECUTE: Policy applied successfully. ${candidatePolicy.reason}');
+        _logTimeline('EXECUTE: New operational constraints applied.');
 
         // Record Decision
         _recordDecision(
@@ -113,85 +130,12 @@ class FlowMindAgent {
     }
   }
 
-  PipelinePolicy? _formulatePolicy(PipelinePolicy currentPolicy, PipelineMetrics metrics) {
-    final rate = metrics.eventRatePerMin;
-    final pressure = metrics.queuePressurePercentage;
-
-    // Standard baseline recovery
-    if (rate <= 2000 && currentPolicy.policies[WorkloadPriority.p3Log]!.mode != ProcessingStrategy.stream) {
-      return PipelinePolicy.defaultPolicy();
-    }
-
-    // Moderate spike (e.g. 5,000 - 15,000 e/min) -> Micro-batch P2 and P3
-    if (rate > 3000 && rate < 15000) {
-      if (currentPolicy.policies[WorkloadPriority.p2Activity]!.mode == ProcessingStrategy.stream) {
-        final updated = Map<WorkloadPriority, PriorityPolicy>.from(currentPolicy.policies);
-        updated[WorkloadPriority.p2Activity] = updated[WorkloadPriority.p2Activity]!.copyWith(
-          mode: ProcessingStrategy.batch,
-          batchSize: 250,
-        );
-        updated[WorkloadPriority.p3Log] = updated[WorkloadPriority.p3Log]!.copyWith(
-          mode: ProcessingStrategy.batch,
-          batchSize: 500,
-        );
-
-        return PipelinePolicy(
-          policies: updated,
-          timestamp: DateTime.now(),
-          version: 'v2.1-microbatch',
-          reason: 'Enable micro-batching for P2 Activity (250) and P3 Logs (500) to lower worker overhead.',
-        );
-      }
-    }
-
-    // Extreme spike (15,000+ e/min) -> Defer P2 Activity, Sample/Shed P3 Logs, KEEP P0 STREAMING
-    if (rate >= 15000) {
-      final p3Mode = currentPolicy.policies[WorkloadPriority.p3Log]!.mode;
-      if (p3Mode != ProcessingStrategy.shed || pressure > 50) {
-        final updated = Map<WorkloadPriority, PriorityPolicy>.from(currentPolicy.policies);
-        
-        // P0 Payments & Orders ALWAYS STREAMING
-        updated[WorkloadPriority.p0Payment] = updated[WorkloadPriority.p0Payment]!.copyWith(
-          mode: ProcessingStrategy.stream,
-          workerCount: 12,
-        );
-        updated[WorkloadPriority.p0Order] = updated[WorkloadPriority.p0Order]!.copyWith(
-          mode: ProcessingStrategy.stream,
-          workerCount: 12,
-        );
-
-        // P1 Inventory Micro-batching
-        updated[WorkloadPriority.p1Inventory] = updated[WorkloadPriority.p1Inventory]!.copyWith(
-          mode: ProcessingStrategy.batch,
-          batchSize: 100,
-        );
-
-        // P2 Activity Deferral
-        updated[WorkloadPriority.p2Activity] = updated[WorkloadPriority.p2Activity]!.copyWith(
-          mode: ProcessingStrategy.defer,
-          deferWindowSeconds: 30,
-        );
-
-        // P3 Logs Sampling/Shedding
-        updated[WorkloadPriority.p3Log] = updated[WorkloadPriority.p3Log]!.copyWith(
-          mode: ProcessingStrategy.shed,
-          samplingRate: 0.20, // Shed 80% of non-critical logs
-        );
-
-        return PipelinePolicy(
-          policies: updated,
-          timestamp: DateTime.now(),
-          version: 'v3.0-extreme-surge',
-          reason: '20× Surge Protection: Defer P2 Activity, Sample P3 Logs (80% shed), Stream P0 Payments/Orders.',
-        );
-      }
-    }
-
-    return null;
-  }
-
   void rollbackPolicy(PipelineRuntime runtime) {
-    if (_previousPolicy != null) {
+    if (evaluator.activeCheckpoint != null) {
+      evaluator.forceRollback(runtime);
+      _logTimeline('MANUAL ROLLBACK: Reverted policy to checkpoint #${evaluator.activeCheckpoint?.id ?? "ORIGINAL"}');
+      _activeActionDescription = 'Policy manually reverted to baseline checkpoint';
+    } else if (_previousPolicy != null) {
       runtime.setPolicy(_previousPolicy!);
       _logTimeline('ROLLBACK: Reverted policy to previous version');
       _activeActionDescription = 'Policy rolled back due to user request';

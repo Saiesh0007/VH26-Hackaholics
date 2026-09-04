@@ -51,33 +51,206 @@ class FlowMindScreen extends ConsumerWidget {
                 AgentStatusIndicator(state: agentSummary.state),
                 const SizedBox(height: 14),
 
-                // Current Objective Card
+                // Deterministic Classification Constraints Badge
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.agent.withOpacity(0.5)),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.info.withOpacity(0.4), width: 0.8),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      const Text(
-                        'CURRENT OBJECTIVE',
-                        style: TextStyle(color: AppColors.agentGlow, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.info.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.rule_rounded, size: 16, color: AppColors.info),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        agentSummary.currentObjective,
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'CLASSIFICATION: DETERMINISTIC CONSTRAINTS',
+                              style: TextStyle(color: AppColors.info, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.6),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Decoupled from AI. Zero-copy domain rules in classification_constraints.dart assign P0-P3 instantly.',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      const Divider(color: AppColors.divider),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Condition: ${agentSummary.currentCondition}',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Dual-Agent Operational Matrix
+                const Text(
+                  'DUAL-AGENT AUTONOMOUS SYSTEM',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                ),
+                const SizedBox(height: 8),
+
+                // Row with Agent 1 (Optimizer) and Agent 2 (Evaluator)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Agent 1: Optimizer Agent
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.agent.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.agent,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Expanded(
+                                  child: Text(
+                                    'AGENT 1: OPTIMIZER',
+                                    style: TextStyle(color: AppColors.agentGlow, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Status: ${engine.agent.optimizer.status.name.toUpperCase()}',
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Analyzes live telemetry & dynamically tunes batching, deferral, and worker constraints.',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 9.5),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceElevated,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'TUNINGS: ${engine.agent.optimizer.optimizationsCount}',
+                                style: const TextStyle(color: AppColors.agentGlow, fontSize: 9, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    // Agent 2: Evaluator Agent
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.warning.withOpacity(0.5)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.warning,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Expanded(
+                                  child: Text(
+                                    'AGENT 2: EVALUATOR',
+                                    style: TextStyle(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Audit: ${engine.agent.evaluator.status.name.toUpperCase()}',
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Compares before/after metrics. Autonomously reverts if proposals degrade SLAs.',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 9.5),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceElevated,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'AUTO-ROLLBACK: ACTIVE',
+                                style: TextStyle(color: AppColors.healthy, fontSize: 9, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Evaluator Latest Verdict Banner
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.verified_user_rounded, size: 18, color: AppColors.agentGlow),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'LATEST EVALUATOR AUDIT VERDICT',
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.6),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              engine.agent.evaluator.latestVerdict,
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -101,11 +274,11 @@ class FlowMindScreen extends ConsumerWidget {
                       onPressed: () {
                         ref.read(pipelineRepositoryProvider).rollbackPolicy();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('ROLLBACK EXECUTED: Policy reverted to previous state.')),
+                          const SnackBar(content: Text('ROLLBACK EXECUTED: Reverted to previous baseline checkpoint.')),
                         );
                       },
                       icon: const Icon(Icons.undo, size: 14),
-                      label: const Text('ROLLBACK POLICY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                      label: const Text('MANUAL ROLLBACK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
