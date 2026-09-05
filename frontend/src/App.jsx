@@ -359,18 +359,40 @@ function Admin() {
             </div>
             <Badge variant={data.backpressure ? 'red' : 'green'}>{data.backpressure ? 'Backpressure' : 'Healthy'}</Badge>
           </div>
-          <div style={{ marginTop: 32, height: 192, display: 'flex', alignItems: 'flex-end', gap: 3 }}>
+          <div style={{ marginTop: 32, height: 192, display: 'flex', alignItems: 'flex-end', gap: 3, position: 'relative' }}>
+            <div style={{ position: 'absolute', top: -20, left: 0, fontSize: 10, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Y-Axis: Events / Sec (Throughput)
+            </div>
+            
+            {/* Y-Axis Numerical Labels */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: 10, color: C.textMuted, pointerEvents: 'none', paddingBottom: 2 }}>
+              <span>{maxBar > 1 ? maxBar.toLocaleString() : ''}</span>
+              <span>{maxBar > 1 ? Math.round(maxBar / 2).toLocaleString() : ''}</span>
+              <span>0</span>
+            </div>
+
+            {/* Subtle horizontal grid lines */}
+            <div style={{ position: 'absolute', top: 0, left: 40, right: 0, borderTop: `1px dashed ${C.border}`, zIndex: 0 }} />
+            <div style={{ position: 'absolute', top: '50%', left: 40, right: 0, borderTop: `1px dashed ${C.border}`, zIndex: 0 }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 40, right: 0, borderTop: `1px solid ${C.border}`, zIndex: 0 }} />
+
+            {/* Spacer to push bars right of the y-axis labels */}
+            <div style={{ width: 36, flexShrink: 0 }} />
+
             {history.map((v, i) => (
               <div key={i} style={{
                 flex: 1, borderRadius: '3px 3px 0 0',
                 background: `linear-gradient(180deg, ${C.accent} 0%, ${C.amber} 100%)`,
                 height: `${Math.max((v / maxBar) * 100, 2)}%`,
                 transition: 'height 0.3s ease',
+                zIndex: 1,
               }} />
             ))}
           </div>
-          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted }}>
-            <span>-30s</span><span>-15s</span><span>Now</span>
+          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted, position: 'relative' }}>
+            <span>-30s</span>
+            <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>X-Axis: Time</span>
+            <span>Now</span>
           </div>
         </Card>
 
@@ -777,11 +799,18 @@ function Simulation() {
             Traffic rate
             <span style={{ float: 'right', fontFamily: 'monospace', color: C.accent }}>{rate.toLocaleString()} / min</span>
           </label>
-          <input style={{ marginTop: 20, width: '100%', accentColor: C.accent }} type="range"
-            min="1000" max="350000" step="1000" value={rate} onChange={e => applyRate(+e.target.value)} />
-          <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted }}>
-            <span>1k</span><span>350k</span>
-          </div>
+          {(() => {
+            const maxRate = mode === 'Stress' ? 350000 : (mode === 'Spike' ? 50000 : 10000);
+            return (
+              <>
+                <input style={{ marginTop: 20, width: '100%', accentColor: '#1F2937' }} type="range"
+                  min="1000" max={maxRate} step="1000" value={Math.min(rate, maxRate)} onChange={e => applyRate(+e.target.value)} />
+                <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.textMuted }}>
+                  <span>1k</span><span>{maxRate / 1000}k</span>
+                </div>
+              </>
+            )
+          })()}
 
           <p style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.green }}>
             <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
@@ -1918,15 +1947,8 @@ function LandingPage() {
             <div style={{ width: 34, height: 34, background: '#0D0D0D', borderRadius: 8, display: 'grid', placeItems: 'center', color: '#fff', fontSize: 14, fontWeight: 900, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>J</div>
             <span style={{ fontSize: 18, fontWeight: 900, color: '#0D0D0D', letterSpacing: '-0.04em' }}>AdaptQ</span>
           </Link>
-          {/* Nav links */}
-          <div style={{ display: 'flex', gap: 32 }}>
-            {['Pipeline', 'Traffic', 'Simulation', 'Benchmarks'].map(item => (
-              <Link key={item} className="nav-link-hover" to={`/admin/${item.toLowerCase()}`} style={{ fontSize: 14, color: '#444', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>{item}</Link>
-            ))}
-          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <Link to="/admin" style={{ fontSize: 14, color: '#444', fontWeight: 600, textDecoration: 'none' }}>Log in</Link>
           <Link className="cta-button-hover" to="/admin" style={{
             background: C.amber, color: '#0D0D0D', padding: '10px 22px',
             borderRadius: 8, fontSize: 14, fontWeight: 800, textDecoration: 'none',
