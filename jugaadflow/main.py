@@ -16,8 +16,9 @@ import uvicorn
 from jugaadflow.generator.sources import ALL_SOURCES
 from jugaadflow.pipeline.queues import create_queues
 from jugaadflow.pipeline.classifier import classifier_loop
+from jugaadflow.pipeline.dedup import DedupFilter, dedup_purge_loop
 from jugaadflow.pipeline.strategy import Strategy
-from jugaadflow.pipeline.worker import worker
+from jugaadflow.pipeline.worker import worker, completed_events_cleanup
 from jugaadflow.pipeline.decision_engine import feedback_loop
 from jugaadflow.pipeline.thresholds import Thresholds
 from jugaadflow.metrics.store import Metrics
@@ -41,8 +42,13 @@ async def main():
     thresholds = Thresholds()
     agent_state = AgentState()
     rate_multiplier = [1.0]
+    dedup_filter = DedupFilter(ttl=30.0)
+    completed_events = {}
+    worker_kill_flags = [False] * NUM_WORKERS
+    dead_letter = metrics.dead_letter_events
+    metrics.active_workers = NUM_WORKERS
 
-    app = create_app(queues, strategy, metrics, rate_multiplier, thresholds, agent_state)
+    app = create_app(queues, strategy, metrics, rate_multiplier, thresholds, agent_state, worker_kill_flags, dedup_filter, completed_events)
 
     config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="warning")
     server = uvicorn.Server(config)
@@ -52,10 +58,14 @@ async def main():
     for src in ALL_SOURCES:
         tasks.append(asyncio.create_task(src(queues.input_queue, rate_multiplier)))
 
-    tasks.append(asyncio.create_task(classifier_loop(queues, metrics, strategy)))
+    tasks.append(asyncio.create_task(classifier_loop(queues, metrics, strategy, dedup_filter)))
+    tasks.append(asyncio.create_task(dedup_purge_loop(dedup_filter, interval=5.0)))
 
     for i in range(NUM_WORKERS):
-        tasks.append(asyncio.create_task(worker(i, queues, strategy, metrics)))
+        tasks.append(asyncio.create_task(
+            worker(i, queues, strategy, metrics, completed_events, worker_kill_flags, dead_letter)
+        ))
+    tasks.append(asyncio.create_task(completed_events_cleanup(completed_events, ttl=60.0, interval=10.0)))
 
     tasks.append(asyncio.create_task(feedback_loop(queues, strategy, metrics, thresholds, interval=3.0)))
     tasks.append(asyncio.create_task(metrics_broadcaster(queues, strategy, metrics, rate_multiplier, app, interval=1.0)))

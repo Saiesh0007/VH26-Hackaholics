@@ -18,3 +18,4 @@ class Event:
     priority: int = 0
     created_at: float = field(default_factory=time.time)
     id: str = field(default_factory=_next_id)
+    retry_count: int = 0

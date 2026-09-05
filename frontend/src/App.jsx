@@ -320,6 +320,7 @@ function Admin() {
   const deferred   = sumObj(data.counters?.deferred)
   const batched    = sumObj(data.counters?.batched)
   const shed       = sumObj(data.counters?.shed)
+  const duplicates = sumObj(data.counters?.duplicates)
   const maxBar     = Math.max(...history, 1)
 
   const queues = [
@@ -334,6 +335,13 @@ function Admin() {
       <PageTitle eyebrow="Live control room" title="Adaptive pipeline overview"
         desc={`Level: ${LEVEL_NAMES[data.level]} · Updated every second via WebSocket`}
         action={<Button secondary><Activity size={16} /> Live</Button>} />
+
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={() => { if (confirm('Reset all counters and return to Normal level?')) fetch('/api/reset', { method: 'POST' }) }}
+          style={{ padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#b91c1c', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer' }}>
+          Reset Metrics
+        </button>
+      </div>
 
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
         <Stat label="Current traffic"     value={`${(traffic / 1000).toFixed(1)}k/min`} sub={`${data.rate_multiplier.toFixed(1)}x multiplier`} />
@@ -388,11 +396,87 @@ function Admin() {
         </Card>
       </div>
 
-      <div style={{ marginTop: 24, display: 'grid', gap: 16, gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        <Stat label="Deferred events" value={deferred.toLocaleString()} sub="P1/P2 under load" />
-        <Stat label="Batched events"  value={batched.toLocaleString()}  sub="Efficiently grouped" />
-        <Stat label="Shed events"     value={shed.toLocaleString()}     sub="Non-critical only" />
+      <div style={{ marginTop: 24, display: 'grid', gap: 16, gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <Stat label="Deferred events"  value={deferred.toLocaleString()}   sub="P1/P2 under load" />
+        <Stat label="Batched events"   value={batched.toLocaleString()}    sub="Efficiently grouped" />
+        <Stat label="Shed events"      value={shed.toLocaleString()}       sub="Non-critical only" />
+        <Stat label="Duplicates caught" value={duplicates.toLocaleString()} sub="Dedup filter (30s TTL)" />
       </div>
+
+      {data.fault_tolerance && (
+        <div style={{ marginTop: 24, display: 'grid', gap: 16, gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <Stat label="Active workers" value={`${data.fault_tolerance.active_workers}/${data.fault_tolerance.total_workers}`} sub="Processing capacity" />
+          <Stat label="Retries" value={data.fault_tolerance.retries_total} sub="Re-queued after failure" />
+          <Stat label="Idempotent skips" value={data.fault_tolerance.idempotent_skips} sub="Already-processed detected" />
+          <Stat label="Dead letters" value={data.fault_tolerance.dead_letter_count} sub="Failed after 3 retries" critical={data.fault_tolerance.dead_letter_count > 0} />
+        </div>
+      )}
+
+      {data.level >= 1 && (
+        <Card style={{ marginTop: 24, border: `2px solid ${LEVEL_COLORS[data.level]}22`, background: `linear-gradient(135deg, ${LEVEL_COLORS[data.level]}08 0%, #fff 100%)` }}>
+          <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: `1px solid ${C.border}` }}>
+            <Shield size={20} color={LEVEL_COLORS[data.level]} />
+            <div>
+              <h2 style={{ fontWeight: 800, fontSize: 15, margin: 0, color: LEVEL_COLORS[data.level] }}>
+                Adaptive Protection Active
+              </h2>
+              <p style={{ fontSize: 13, color: C.textSec, margin: '2px 0 0' }}>
+                Level: {LEVEL_NAMES[data.level]} — same 8 workers, zero payment drops
+              </p>
+            </div>
+          </div>
+          <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 12px' }}>Protecting</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: C.green, fontWeight: 900 }}>&#10003;</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Payments</span>
+                  <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>{(data.counters?.shed?.payment || 0) === 0 ? '0 lost' : `${data.counters.shed.payment} lost!`}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: C.green, fontWeight: 900 }}>&#10003;</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Orders</span>
+                  <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>{(data.counters?.shed?.order || 0) === 0 ? '0 lost' : `${data.counters.shed.order} lost!`}</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 12px' }}>Sacrificing</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(data.counters?.shed?.log || 0) > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: C.red, fontWeight: 900 }}>&#10007;</span>
+                    <span style={{ fontSize: 14 }}>Logs</span>
+                    <span style={{ fontSize: 13, color: C.red, fontFamily: 'monospace' }}>{(data.counters.shed.log).toLocaleString()} shed</span>
+                  </div>
+                )}
+                {(data.counters?.deferred?.click || 0) > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: C.orange, fontWeight: 900 }}>&#8635;</span>
+                    <span style={{ fontSize: 14 }}>Clicks</span>
+                    <span style={{ fontSize: 13, color: C.orange, fontFamily: 'monospace' }}>{(data.counters.deferred.click).toLocaleString()} deferred</span>
+                  </div>
+                )}
+                {(data.counters?.batched?.inventory || 0) > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: '#6366F1', fontWeight: 900 }}>&#9776;</span>
+                    <span style={{ fontSize: 14 }}>Inventory</span>
+                    <span style={{ fontSize: 13, color: '#6366F1', fontFamily: 'monospace' }}>{(data.counters.batched.inventory).toLocaleString()} batched</span>
+                  </div>
+                )}
+                {(data.counters?.shed?.click || 0) > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: C.red, fontWeight: 900 }}>&#10007;</span>
+                    <span style={{ fontSize: 14 }}>Clicks</span>
+                    <span style={{ fontSize: 13, color: C.red, fontFamily: 'monospace' }}>{(data.counters.shed.click).toLocaleString()} shed</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
     </Shell>
   )
 }
@@ -403,11 +487,14 @@ function QueueMonitor() {
   if (!data) return <Shell><div style={{ textAlign: 'center', color: C.textMuted, paddingTop: 80 }}>Connecting...</div></Shell>
 
   const tiers = [
-    { p: 'P0', name: 'Critical',  key: 'tier1', max: '∞',     types: ['payment', 'order'], defKey: null },
-    { p: 'P1', name: 'Important', key: 'tier2', max: '5,000', types: ['inventory'],         defKey: 'deferred_tier2' },
-    { p: 'P2', name: 'Normal',    key: 'tier3', max: '2,000', types: ['click'],             defKey: 'deferred_tier3' },
-    { p: 'P3', name: 'Low',       key: 'tier4', max: '500',   types: ['log'],               defKey: null },
+    { p: 'P0', name: 'Critical',  key: 'tier1', max: '∞',     types: ['payment', 'order'], defKey: null, stratKey: null },
+    { p: 'P1', name: 'Important', key: 'tier2', max: '5,000', types: ['inventory'],         defKey: 'deferred_tier2', stratKey: 'tier2' },
+    { p: 'P2', name: 'Normal',    key: 'tier3', max: '2,000', types: ['click'],             defKey: 'deferred_tier3', stratKey: 'tier3' },
+    { p: 'P3', name: 'Low',       key: 'tier4', max: '500',   types: ['log'],               defKey: null, stratKey: 'tier4' },
   ]
+
+  const level = data.level ?? 0
+  const qmStrategy = LEVEL_STRATEGIES[level] || LEVEL_STRATEGIES[0]
 
   return (
     <Shell>
@@ -428,7 +515,12 @@ function QueueMonitor() {
                   <span style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 900, color: C.text }}>{t.p}</span>
                   <span style={{ marginLeft: 12, fontSize: 14, color: C.textSec }}>{t.name}</span>
                 </div>
-                <Badge variant="green">Active</Badge>
+                {(() => {
+                  const action = t.stratKey ? (qmStrategy[t.stratKey] || 'process') : (t.p === 'P0' && data.backpressure ? 'backpressure' : 'process')
+                  const badgeMap = { process: ['green', 'Processing'], batch: ['blue', 'Batching'], defer: ['amber', 'Deferring'], shed: ['red', 'Shedding'], backpressure: ['red', 'Backpressure'] }
+                  const [v, l] = badgeMap[action] || ['green', 'Processing']
+                  return <Badge variant={v}>{l}</Badge>
+                })()}
               </div>
               <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div>
@@ -437,7 +529,7 @@ function QueueMonitor() {
                 </div>
                 <div>
                   <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>Pressure</p>
-                  <p style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 0' }}>{pressure}%</p>
+                  <p style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 0', color: pressure > 80 ? C.red : pressure > 50 ? C.orange : C.green }}>{pressure}%</p>
                 </div>
                 <div>
                   <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>Deferred</p>
@@ -488,7 +580,7 @@ function EventStream() {
                   </td>
                   <td style={{ padding: '14px 20px' }}>{e.queue}</td>
                   <td style={{ padding: '14px 20px' }}>
-                    <Badge variant={e.decision === 'shed' ? 'red' : e.decision === 'defer' ? 'amber' : 'green'}>{e.decision}</Badge>
+                    <Badge variant={e.decision === 'shed' ? 'red' : e.decision === 'defer' ? 'amber' : e.decision === 'duplicate' ? 'orange' : 'green'}>{e.decision}</Badge>
                   </td>
                   <td style={{ padding: '14px 20px', fontFamily: 'monospace', fontSize: 11 }}>{e.time}</td>
                 </tr>
@@ -564,6 +656,10 @@ function Simulation() {
 
   const [flooding, setFlooding] = useState(false)
   const [floodResult, setFloodResult] = useState(null)
+  const [dedupTesting, setDedupTesting] = useState(false)
+  const [dedupResult, setDedupResult] = useState(null)
+  const [killing, setKilling] = useState(false)
+  const [killResult, setKillResult] = useState(null)
   const [spiking, setSpiking] = useState({})
   const [spikeDur, setSpikeDur] = useState(5)
   const [spikeResults, setSpikeResults] = useState({})
@@ -713,6 +809,67 @@ function Simulation() {
             {floodResult && !floodResult.error && (
               <div style={{ marginTop: 8, fontSize: 11, color: C.textSec, background: '#F7F5F0', padding: 10, borderRadius: 6 }}>
                 Injected: T2={floodResult.injected.tier2} T3={floodResult.injected.tier3} T4={floodResult.injected.tier4} Input={floodResult.injected.input}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 20, borderTop: `1px solid ${C.border}`, paddingTop: 16 }}>
+            <button onClick={async () => {
+              setDedupTesting(true); setDedupResult(null)
+              try {
+                const results = []
+                for (const t of ['payment', 'order', 'inventory', 'click', 'log']) {
+                  const res = await fetch('/api/inject-duplicate', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ event_type: t, count: 2 }),
+                  })
+                  results.push(await res.json())
+                }
+                setDedupResult({ ok: true, count: results.length })
+              } catch (e) { setDedupResult({ error: e.message }) }
+              setTimeout(() => setDedupTesting(false), 1500)
+            }} disabled={dedupTesting} style={{
+              width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 14, fontWeight: 800,
+              cursor: dedupTesting ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              border: `2px solid ${C.amber}`, background: dedupTesting ? '#FEF3C7' : '#fff',
+              color: '#92400E', opacity: dedupTesting ? 0.7 : 1, transition: 'all 0.15s',
+            }}>
+              <Shield size={16} style={{ verticalAlign: 'middle', marginRight: 8 }} />
+              {dedupTesting ? 'Injecting...' : 'Test Duplicate Detection'}
+            </button>
+            <p style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
+              Injects identical event pairs for each type. Check "Duplicates caught" counter.
+            </p>
+            {dedupResult && !dedupResult.error && (
+              <div style={{ marginTop: 8, fontSize: 11, color: C.textSec, background: '#F7F5F0', padding: 10, borderRadius: 6 }}>
+                Injected duplicate pairs for {dedupResult.count} event types. Check Overview stats.
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 20, borderTop: `1px solid ${C.border}`, paddingTop: 16 }}>
+            <button onClick={async () => {
+              setKilling(true); setKillResult(null)
+              try {
+                const res = await fetch('/api/kill-worker', { method: 'POST' })
+                setKillResult(await res.json())
+              } catch (e) { setKillResult({ error: e.message }) }
+              setTimeout(() => setKilling(false), 5000)
+            }} disabled={killing} style={{
+              width: '100%', padding: '12px 16px', borderRadius: 8, fontSize: 14, fontWeight: 800,
+              cursor: killing ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              border: `2px solid #7C3AED`, background: killing ? '#EDE9FE' : '#fff',
+              color: '#5B21B6', opacity: killing ? 0.7 : 1, transition: 'all 0.15s',
+            }}>
+              <Zap size={16} style={{ verticalAlign: 'middle', marginRight: 8 }} />
+              {killing ? 'Worker killed (revives in 5s)...' : 'Kill Random Worker (5s)'}
+            </button>
+            <p style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
+              Disables a random worker for 5 seconds. Events it was processing get retried by others.
+            </p>
+            {killResult && !killResult.error && (
+              <div style={{ marginTop: 8, fontSize: 11, color: C.textSec, background: '#F7F5F0', padding: 10, borderRadius: 6 }}>
+                Worker #{killResult.worker_id} killed. Revives in {killResult.revive_in_sec}s. Watch Active Workers on Overview.
               </div>
             )}
           </div>
@@ -1066,6 +1223,31 @@ function Pipeline() {
     <Shell>
       <PageTitle eyebrow="Architecture" title="Pipeline flow" desc="Real-time view of the adaptive pipeline architecture and current strategy." />
 
+      {level >= 1 && (
+        <div style={{
+          marginBottom: 16, padding: '14px 20px', borderRadius: 12,
+          background: `linear-gradient(135deg, ${levelColor}12 0%, ${levelColor}06 100%)`,
+          border: `1.5px solid ${levelColor}33`,
+          display: 'flex', alignItems: 'center', gap: 12,
+          animation: level >= 3 ? 'pulse-btn 1.5s ease-in-out infinite' : undefined,
+        }}>
+          <Shield size={18} color={levelColor} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: levelColor }}>
+              {level === 1 && 'Batching tier 3 & 4 to free capacity for critical events'}
+              {level === 2 && 'Deferring tier 3, shedding tier 4 — protecting payments & orders'}
+              {level === 3 && 'EMERGENCY: Deferring tier 2 & 3, shedding tier 4 — all capacity on P0'}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: C.textSec }}>
+              P0 latency: {data.latency_ms?.tier1 != null ? `${data.latency_ms.tier1.toFixed(0)}ms` : '—'}
+              {' · Shed: '}{sumObj(data.counters?.shed).toLocaleString()}
+              {' · Deferred: '}{sumObj(data.counters?.deferred).toLocaleString()}
+            </p>
+          </div>
+          <Badge variant={level >= 3 ? 'red' : level >= 2 ? 'red' : 'amber'}>{LEVEL_NAMES[level]}</Badge>
+        </div>
+      )}
+
       <Card style={{ padding: 24, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Data flow</h2>
@@ -1132,15 +1314,16 @@ function Pipeline() {
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
                 <div style={{
                   borderRadius: 12,
-                  background: 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${t.color}44`,
+                  background: t.action === 'shed' ? 'rgba(220,38,38,0.06)' : t.action === 'defer' ? 'rgba(232,68,10,0.06)' : 'rgba(255,255,255,0.03)',
+                  border: `1.5px solid ${t.action === 'shed' ? C.red : t.action === 'defer' ? C.accent : t.action === 'batch' ? C.amber : t.color}66`,
                   padding: '12px 16px',
                   minWidth: 180,
-                  boxShadow: `0 4px 16px ${t.color}11`,
+                  boxShadow: t.action === 'shed' ? `0 0 20px ${C.red}33` : t.action === 'defer' ? `0 0 20px ${C.accent}33` : `0 4px 16px ${t.color}11`,
                   position: 'relative',
                   overflow: 'hidden',
+                  transition: 'all 0.3s ease',
                 }}>
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: t.color }} />
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: t.action === 'shed' ? C.red : t.action === 'defer' ? C.accent : t.color }} />
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: t.color, textShadow: `0 0 8px ${t.color}44` }}>{t.label}</span>
                     <span style={{
@@ -1175,7 +1358,9 @@ function Pipeline() {
               backdropFilter: 'blur(8px)',
             }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: C.accent, margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Workers</p>
-              <p style={{ fontFamily: 'monospace', fontSize: 36, fontWeight: 900, color: 'rgba(255,255,255,0.95)', margin: '8px 0 0', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>8</p>
+              <p style={{ fontFamily: 'monospace', fontSize: 36, fontWeight: 900, color: data.fault_tolerance?.active_workers < data.fault_tolerance?.total_workers ? '#F59E0B' : 'rgba(255,255,255,0.95)', margin: '8px 0 0', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                {data.fault_tolerance ? `${data.fault_tolerance.active_workers}/${data.fault_tolerance.total_workers}` : '8'}
+              </p>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0', textTransform: 'uppercase', letterSpacing: '0.02em' }}>strict priority</p>
             </div>
           </div>
@@ -1268,11 +1453,16 @@ function Benchmarks() {
   const paymentShed  = counters.shed?.payment || 0
   const eventTypes   = ['payment', 'order', 'inventory', 'click', 'log']
 
+  const latColor = (val, tier) => {
+    if (val == null) return C.text
+    if (tier === 1) return val > 150 ? C.red : val > 80 ? C.orange : C.green
+    return val > 300 ? C.red : val > 100 ? C.orange : C.green
+  }
   const latCards = [
-    { tier: 'Tier 1', label: 'Critical',  value: lat.tier1, color: TIER_COLORS[0] },
-    { tier: 'Tier 2', label: 'Important', value: lat.tier2, color: TIER_COLORS[1] },
-    { tier: 'Tier 3', label: 'Normal',    value: lat.tier3, color: TIER_COLORS[2] },
-    { tier: 'Tier 4', label: 'Low',       value: lat.tier4, color: TIER_COLORS[3] },
+    { tier: 'Tier 1', label: 'Critical',  value: lat.tier1, color: TIER_COLORS[0], tierNum: 1 },
+    { tier: 'Tier 2', label: 'Important', value: lat.tier2, color: TIER_COLORS[1], tierNum: 2 },
+    { tier: 'Tier 3', label: 'Normal',    value: lat.tier3, color: TIER_COLORS[2], tierNum: 3 },
+    { tier: 'Tier 4', label: 'Low',       value: lat.tier4, color: TIER_COLORS[3], tierNum: 4 },
   ]
 
   return (
@@ -1286,7 +1476,7 @@ function Benchmarks() {
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: c.color, display: 'inline-block' }} />
               <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>{c.tier} · {c.label}</span>
             </div>
-            <p style={{ fontSize: 28, fontWeight: 800, color: C.text, margin: '12px 0 0' }}>
+            <p style={{ fontSize: 28, fontWeight: 800, color: latColor(c.value, c.tierNum), margin: '12px 0 0', transition: 'color 0.3s' }}>
               {c.value != null ? c.value.toFixed(1) : '—'}<span style={{ fontSize: 13, color: C.textMuted }}>ms</span>
             </p>
             <p style={{ fontSize: 12, color: C.textMuted, margin: '4px 0 0' }}>Avg end-to-end latency</p>
@@ -1350,7 +1540,7 @@ function Benchmarks() {
           <table style={{ width: '100%', minWidth: 600, textAlign: 'left', fontSize: 13, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                {['Event type', 'Priority', 'Processed', 'Batched', 'Deferred', 'Shed'].map((h, i) => (
+                {['Event type', 'Priority', 'Processed', 'Batched', 'Deferred', 'Shed', 'Duplicates'].map((h, i) => (
                   <th key={h} style={{ padding: '12px 20px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, fontWeight: 600, textAlign: i > 1 ? 'right' : 'left' }}>{h}</th>
                 ))}
               </tr>
@@ -1374,12 +1564,53 @@ function Benchmarks() {
                   }}>
                     {(counters.shed?.[t] || 0).toLocaleString()}
                   </td>
+                  <td style={{ padding: '12px 20px', fontFamily: 'monospace', textAlign: 'right' }}>
+                    {(counters.duplicates?.[t] || 0).toLocaleString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </Card>
+
+      {data.fault_tolerance && (
+        <Card style={{ marginTop: 24 }}>
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${C.border}` }}>
+            <h2 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>Fault tolerance</h2>
+            <p style={{ fontSize: 13, color: C.textSec, margin: '4px 0 0' }}>
+              Workers: {data.fault_tolerance.active_workers}/{data.fault_tolerance.total_workers} &middot;
+              Retries: {data.fault_tolerance.retries_total} &middot;
+              Idempotent skips: {data.fault_tolerance.idempotent_skips} &middot;
+              Dead letters: {data.fault_tolerance.dead_letter_count}
+            </p>
+          </div>
+          {data.fault_tolerance.dead_letter_events.length > 0 && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', textAlign: 'left', fontSize: 13, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                    {['Event ID', 'Type', 'Priority', 'Retries', 'Time'].map(h => (
+                      <th key={h} style={{ padding: '12px 20px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, fontWeight: 600 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.fault_tolerance.dead_letter_events.map((dl, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <td style={{ padding: '12px 20px', fontFamily: 'monospace', fontSize: 11 }}>{dl.id}</td>
+                      <td style={{ padding: '12px 20px', fontWeight: 600, textTransform: 'capitalize' }}>{dl.type}</td>
+                      <td style={{ padding: '12px 20px' }}><Badge variant="blue">P{dl.priority - 1}</Badge></td>
+                      <td style={{ padding: '12px 20px', fontFamily: 'monospace' }}>{dl.retries}</td>
+                      <td style={{ padding: '12px 20px', fontFamily: 'monospace', fontSize: 11 }}>{dl.time}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
     </Shell>
   )
 }

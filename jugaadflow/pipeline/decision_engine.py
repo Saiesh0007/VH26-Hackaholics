@@ -97,12 +97,22 @@ async def feedback_loop(queues: Queues, strategy: Strategy, metrics: Metrics,
     deescalation_target: int | None = None
     prev_lower_q: int = 0
     heartbeat_counter: int = 0
+    idle_ticks: int = 0
 
     while True:
         await asyncio.sleep(interval)
 
         if strategy.naive_mode:
             continue
+
+        total_throughput = sum(metrics.throughput_window.values())
+        if total_throughput == 0:
+            idle_ticks += 1
+        else:
+            idle_ticks = 0
+        if idle_ticks >= 2:
+            for tier in metrics.latency_samples:
+                metrics.latency_samples[tier].clear()
 
         t1_queue = queues.tier1.qsize()
         t1_latency_ms = metrics.avg_latency_ms(1) or 0.0

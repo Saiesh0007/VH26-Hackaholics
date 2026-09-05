@@ -24,6 +24,9 @@ class Metrics:
     batched_count: dict[str, int] = field(default_factory=lambda: {
         "payment": 0, "order": 0, "inventory": 0, "click": 0, "log": 0,
     })
+    duplicates_detected: dict[str, int] = field(default_factory=lambda: {
+        "payment": 0, "order": 0, "inventory": 0, "click": 0, "log": 0,
+    })
 
     throughput_window: dict[int, int] = field(default_factory=lambda: {
         1: 0, 2: 0, 3: 0, 4: 0,
@@ -42,6 +45,12 @@ class Metrics:
     recent_decisions: deque = field(default_factory=lambda: deque(maxlen=50))
     recent_agent_actions: deque = field(default_factory=lambda: deque(maxlen=30))
     emergency_since: float = 0.0
+
+    retries_total: int = 0
+    idempotent_skips: int = 0
+    dead_letter_count: int = 0
+    active_workers: int = 8
+    dead_letter_events: deque = field(default_factory=lambda: deque(maxlen=100))
 
     def record_classified(self, tier: int):
         self.classified_window[tier] += 1
@@ -66,3 +75,22 @@ class Metrics:
             self.throughput_window[k] = 0
         for k in self.classified_window:
             self.classified_window[k] = 0
+
+    def reset_all(self):
+        for d in (self.processed_count, self.shed_count, self.deferred_count,
+                  self.batched_count, self.duplicates_detected):
+            for k in d:
+                d[k] = 0
+        self.reset_throughput()
+        for tier in self.latency_samples:
+            self.latency_samples[tier].clear()
+        self.recent_events.clear()
+        self.recent_decisions.clear()
+        self.dead_letter_events.clear()
+        self.retries_total = 0
+        self.idempotent_skips = 0
+        self.dead_letter_count = 0
+        self.current_level = 0
+        self.backpressure_active = False
+        self.emergency_since = 0.0
+        self.start_time = time.time()

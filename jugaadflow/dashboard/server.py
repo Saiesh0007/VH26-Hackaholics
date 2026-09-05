@@ -63,6 +63,9 @@ def create_app(
     rate_multiplier: list[float],
     thresholds: Thresholds | None = None,
     agent_state: AgentState | None = None,
+    worker_kill_flags: list | None = None,
+    dedup_filter=None,
+    completed_events: dict | None = None,
 ) -> FastAPI:
     app = FastAPI(title="JugaadFlow Dashboard")
     clients: list[WebSocket] = []
@@ -178,6 +181,25 @@ def create_app(
         for k in expired:
             del _active_spikes[k]
         return {"active_spikes": dict(_active_spikes)}
+
+    @app.post("/api/inject-duplicate")
+    async def inject_duplicate(req: EventSpikeRequest):
+        etype = req.event_type.lower()
+        if etype not in EVENT_PAYLOAD_MAP:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=f"Unknown event_type '{etype}'")
+        payload_fn, source_name, priority = EVENT_PAYLOAD_MAP[etype]
+        fixed_payload = payload_fn()
+        injected = 0
+        for _ in range(2):
+            evt = Event(type=etype, source=f"dedup-test/{source_name}",
+                        payload=dict(fixed_payload), priority=priority)
+            try:
+                queues.input_queue.put_nowait(evt)
+                injected += 1
+            except asyncio.QueueFull:
+                pass
+        return {"status": "duplicate_pair_injected", "event_type": etype, "injected": injected}
 
     @app.post("/api/flood")
     async def trigger_flood(req: FloodRequest = FloodRequest()):
@@ -295,6 +317,40 @@ def create_app(
             agent_state.alert_reason = reason
 
             return {"status": "call_initiated", "call_sid": call_sid}
+
+    @app.post("/api/kill-worker")
+    async def kill_worker():
+        if worker_kill_flags is None:
+            return {"error": "worker_kill_flags not configured"}
+        alive = [i for i, killed in enumerate(worker_kill_flags) if not killed]
+        if not alive:
+            return {"error": "all workers already killed"}
+        victim = random.choice(alive)
+        worker_kill_flags[victim] = True
+        metrics.active_workers = sum(1 for f in worker_kill_flags if not f)
+
+        async def revive():
+            await asyncio.sleep(5.0)
+            worker_kill_flags[victim] = False
+            metrics.active_workers = sum(1 for f in worker_kill_flags if not f)
+
+        asyncio.create_task(revive())
+        return {"status": "worker_killed", "worker_id": victim, "revive_in_sec": 5}
+
+    @app.post("/api/reset")
+    async def reset_metrics():
+        metrics.reset_all()
+        strategy.level = 0
+        strategy.tier2 = "process"
+        strategy.tier3 = "process"
+        strategy.tier4 = "process"
+        strategy.shed_sample_rate = 0.1
+        strategy.drain_deferred = False
+        if dedup_filter is not None:
+            dedup_filter._seen.clear()
+        if completed_events is not None:
+            completed_events.clear()
+        return {"status": "reset"}
 
     @app.post("/api/twiml/alert")
     async def twiml_alert(request: fastapi.Request):
@@ -443,6 +499,7 @@ def build_metrics_payload(
             "shed": dict(metrics.shed_count),
             "deferred": dict(metrics.deferred_count),
             "batched": dict(metrics.batched_count),
+            "duplicates": dict(metrics.duplicates_detected),
         },
         "incoming_rate": metrics.incoming_rate,
         "classified_per_sec": dict(metrics.classified_window),
@@ -461,6 +518,14 @@ def build_metrics_payload(
             app_ref.state.thresholds.snapshot()
             if app_ref and getattr(app_ref.state, 'thresholds', None) else None
         ),
+        "fault_tolerance": {
+            "retries_total": metrics.retries_total,
+            "idempotent_skips": metrics.idempotent_skips,
+            "dead_letter_count": metrics.dead_letter_count,
+            "active_workers": metrics.active_workers,
+            "total_workers": 8,
+            "dead_letter_events": list(metrics.dead_letter_events),
+        },
         "human_alert": (
             {
                 "active": app_ref.state.agent_state.human_alert_active,
