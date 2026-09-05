@@ -10,7 +10,8 @@ class CreatePipelineScreen extends ConsumerStatefulWidget {
   const CreatePipelineScreen({super.key});
 
   @override
-  ConsumerState<CreatePipelineScreen> createState() => _CreatePipelineScreenState();
+  ConsumerState<CreatePipelineScreen> createState() =>
+      _CreatePipelineScreenState();
 }
 
 class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
@@ -94,7 +95,8 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
     if (_validationResult != null && !_validationResult!.isValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cannot deploy policy: Validation errors must be resolved first.'),
+          content: Text(
+              'Cannot deploy policy: Validation errors must be resolved first.'),
           backgroundColor: AppColors.critical,
         ),
       );
@@ -104,7 +106,8 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
     ref.read(domainProvider.notifier).addAndActivatePolicy(_generatedPolicy!);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Domain Policy "${_generatedPolicy!.domainName}" activated in AdaptQ!'),
+        content: Text(
+            'Domain Policy "${_generatedPolicy!.domainName}" activated in AdaptQ!'),
         backgroundColor: AppColors.healthy,
       ),
     );
@@ -120,11 +123,15 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
         elevation: 0,
         title: const Row(
           children: [
-            Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 20),
+            Icon(Icons.auto_awesome_rounded,
+                color: AppColors.primary, size: 20),
             SizedBox(width: 8),
             Text(
               'AI DOMAIN ARCHITECT',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1.0),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.0),
             ),
           ],
         ),
@@ -157,7 +164,10 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                   const SizedBox(height: 6),
                   const Text(
                     'Describe your target domain in natural language. Gemini AI will synthesize an operational domain policy with priority tiers, strict SLAs, and shedding rules. Human approval is strictly required before activation.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.4),
                   ),
                   const SizedBox(height: 16),
 
@@ -165,19 +175,24 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                   TextField(
                     controller: _promptController,
                     maxLines: 4,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'e.g. University publishing semester results to 50,000 students simultaneously...',
-                      hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      hintText:
+                          'e.g. University publishing semester results to 50,000 students simultaneously...',
+                      hintStyle: const TextStyle(
+                          fontSize: 12, color: AppColors.textMuted),
                       filled: true,
                       fillColor: AppColors.surfaceElevated,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.cardBorder),
+                        borderSide:
+                            const BorderSide(color: AppColors.cardBorder),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.cardBorder),
+                        borderSide:
+                            const BorderSide(color: AppColors.cardBorder),
                       ),
                     ),
                   ),
@@ -186,7 +201,10 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                   // Quick presets
                   const Text(
                     'QUICK SCENARIO PRESETS',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 6),
                   Wrap(
@@ -194,10 +212,13 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                     runSpacing: 8,
                     children: _samplePresets.map((preset) {
                       return ActionChip(
-                        label: Text(preset['title']!, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        label: Text(preset['title']!,
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.textSecondary)),
                         backgroundColor: AppColors.surfaceElevated,
                         side: const BorderSide(color: AppColors.cardBorder),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                         onPressed: () {
                           _promptController.text = preset['prompt']!;
                         },
@@ -214,18 +235,25 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       icon: _isGenerating
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.auto_awesome_rounded, size: 18),
                       label: Text(
-                        _isGenerating ? 'AI SYNTHESIZING POLICY...' : '✨ GENERATE ADAPTIVE POLICY',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.8),
+                        _isGenerating
+                            ? 'AI SYNTHESIZING POLICY...'
+                            : '✨ GENERATE ADAPTIVE POLICY',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            letterSpacing: 0.8),
                       ),
                       onPressed: _isGenerating ? null : _generatePolicy,
                     ),
@@ -251,7 +279,8 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.hub_rounded, color: AppColors.primary, size: 18),
+                        Icon(Icons.hub_rounded,
+                            color: AppColors.primary, size: 18),
                         SizedBox(width: 8),
                         Text(
                           'AI ANALYZING DOMAIN...',
@@ -273,19 +302,27 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                         child: Row(
                           children: [
                             Icon(
-                              isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                              isDone
+                                  ? Icons.check_circle_rounded
+                                  : Icons.radio_button_unchecked_rounded,
                               size: 15,
                               color: isDone
                                   ? AppColors.healthy
-                                  : (isCurrent ? AppColors.primary : AppColors.textMuted),
+                                  : (isCurrent
+                                      ? AppColors.primary
+                                      : AppColors.textMuted),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               _analysisSteps[index],
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isDone ? AppColors.textPrimary : AppColors.textMuted,
-                                fontWeight: isDone ? FontWeight.w600 : FontWeight.normal,
+                                color: isDone
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
+                                fontWeight: isDone
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                               ),
                             ),
                           ],
@@ -310,7 +347,8 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
 
   Widget _buildApprovalCard() {
     final policy = _generatedPolicy!;
-    final validation = _validationResult ?? DartPolicyValidator.validate(policy);
+    final validation =
+        _validationResult ?? DartPolicyValidator.validate(policy);
 
     return Container(
       width: double.infinity,
@@ -319,7 +357,9 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: validation.isValid ? AppColors.healthy.withOpacity(0.5) : AppColors.critical,
+          color: validation.isValid
+              ? AppColors.healthy.withOpacity(0.5)
+              : AppColors.critical,
           width: 1.2,
         ),
         boxShadow: AppColors.cardShadow,
@@ -328,18 +368,24 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Badge
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
                   'AI GENERATED PIPELINE POLICY',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.primaryLight),
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryLight),
                 ),
               ),
               // Validation Status Badge
@@ -355,17 +401,25 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      validation.isValid ? Icons.verified_rounded : Icons.error_outline_rounded,
+                      validation.isValid
+                          ? Icons.verified_rounded
+                          : Icons.error_outline_rounded,
                       size: 13,
-                      color: validation.isValid ? AppColors.healthy : AppColors.critical,
+                      color: validation.isValid
+                          ? AppColors.healthy
+                          : AppColors.critical,
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      validation.isValid ? 'Deterministic Validation: PASSED' : 'Validation: FAILED',
+                      validation.isValid
+                          ? 'Deterministic Validation: PASSED'
+                          : 'Validation: FAILED',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: validation.isValid ? AppColors.healthy : AppColors.critical,
+                        color: validation.isValid
+                            ? AppColors.healthy
+                            : AppColors.critical,
                       ),
                     ),
                   ],
@@ -377,18 +431,26 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
 
           Text(
             policy.domainName,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
             policy.description,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 18),
 
           const Text(
             'SYNTHESIZED EVENT TIERS & PROCESSING RULES',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: AppColors.textMuted),
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+                color: AppColors.textMuted),
           ),
           const SizedBox(height: 10),
 
@@ -408,9 +470,14 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('POLICY SAFETY VIOLATIONS (Activation Blocked):',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.critical)),
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.critical)),
                   const SizedBox(height: 4),
-                  ...validation.errors.map((e) => Text('• $e', style: const TextStyle(fontSize: 11, color: AppColors.critical))),
+                  ...validation.errors.map((e) => Text('• $e',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.critical))),
                 ],
               ),
             ),
@@ -419,45 +486,49 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
           const SizedBox(height: 20),
 
           // Action Buttons: EDIT POLICY & ACCEPT & DEPLOY
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.cardBorder),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.edit_note_rounded, size: 18),
-                  label: const Text('EDIT POLICY', style: TextStyle(fontWeight: FontWeight.w700)),
-                  onPressed: () {
-                    PolicyEditorDialog.show(
-                      context,
-                      initialPolicy: _generatedPolicy!,
-                      onSave: (updated) {
-                        setState(() {
-                          _generatedPolicy = updated;
-                          _validationResult = DartPolicyValidator.validate(updated);
-                        });
-                      },
-                    );
-                  },
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  side: const BorderSide(color: AppColors.cardBorder),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
+                icon: const Icon(Icons.edit_note_rounded, size: 18),
+                label: const Text('EDIT POLICY',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onPressed: () {
+                  PolicyEditorDialog.show(
+                    context,
+                    initialPolicy: _generatedPolicy!,
+                    onSave: (updated) {
+                      setState(() {
+                        _generatedPolicy = updated;
+                        _validationResult =
+                            DartPolicyValidator.validate(updated);
+                      });
+                    },
+                  );
+                },
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: validation.isValid ? AppColors.healthy : AppColors.surfaceElevated,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.check_circle_rounded, size: 18),
-                  label: const Text('ACCEPT & DEPLOY', style: TextStyle(fontWeight: FontWeight.w800)),
-                  onPressed: validation.isValid ? _deployPolicy : null,
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: validation.isValid
+                      ? AppColors.healthy
+                      : AppColors.surfaceElevated,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
+                icon: const Icon(Icons.check_circle_rounded, size: 18),
+                label: const Text('ACCEPT & DEPLOY',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+                onPressed: validation.isValid ? _deployPolicy : null,
               ),
             ],
           ),
@@ -474,7 +545,9 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
         color: AppColors.surfaceElevated,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: evt.isCritical ? AppColors.critical.withOpacity(0.3) : AppColors.cardBorder,
+          color: evt.isCritical
+              ? AppColors.critical.withOpacity(0.3)
+              : AppColors.cardBorder,
           width: 0.8,
         ),
       ),
@@ -494,7 +567,9 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
-                color: evt.isCritical ? AppColors.critical : AppColors.primaryLight,
+                color: evt.isCritical
+                    ? AppColors.critical
+                    : AppColors.primaryLight,
               ),
             ),
           ),
@@ -505,11 +580,15 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
               children: [
                 Text(
                   evt.name,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary),
                 ),
                 Text(
                   '${evt.preferredStrategy.toUpperCase()} • SLA: ${evt.slaMs}ms ${evt.isBatchable ? "• MaxBatch: ${evt.maxBatchSize}" : ""}',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 10, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -520,11 +599,15 @@ class _CreatePipelineScreenState extends ConsumerState<CreatePipelineScreen> {
             decoration: BoxDecoration(
               color: evt.isCritical
                   ? AppColors.critical.withOpacity(0.12)
-                  : (evt.canShed ? AppColors.warning.withOpacity(0.12) : AppColors.surface),
+                  : (evt.canShed
+                      ? AppColors.warning.withOpacity(0.12)
+                      : AppColors.surface),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              evt.isCritical ? 'NEVER DROP' : (evt.canShed ? 'SHEDDABLE' : 'PROTECTED'),
+              evt.isCritical
+                  ? 'NEVER DROP'
+                  : (evt.canShed ? 'SHEDDABLE' : 'PROTECTED'),
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,

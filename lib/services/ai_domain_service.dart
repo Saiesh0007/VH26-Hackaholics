@@ -442,7 +442,7 @@ class AiDomainService {
         'throughput_events_per_min': throughput,
       },
       'explanation':
-          'Deterministic simulation: AdaptQ maintains 0 critical drops by batching P2 and shedding P3 under high pressure.',
+          'Deterministic India deployment simulation: AdaptQ maintains 0 critical drops by batching P2 and shedding P3 under high pressure. Estimated infrastructure cost is converted to INR for local operations.',
     };
   }
 }

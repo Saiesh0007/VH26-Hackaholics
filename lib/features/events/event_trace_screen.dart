@@ -18,7 +18,8 @@ class EventTraceScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('TRACE ${event.id}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        title: Text('TRACE ${event.id}',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -37,22 +38,26 @@ class EventTraceScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '${event.type} EVENT TRACE',
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          '${event.type} EVENT TRACE',
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          softWrap: true,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       PriorityBadge(priority: event.priority),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text('Event ID: ${event.id} | Timestamp: $timeStr',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 11)),
                 ],
               ),
             ),
@@ -79,13 +84,15 @@ class EventTraceScreen extends StatelessWidget {
             _buildTraceStep(
               stepName: 'CLASSIFIED',
               timestamp: timeStr,
-              details: 'Classifier assigned priority: ${event.priority.code} ${event.priority.displayName}',
+              details:
+                  'Classifier assigned priority: ${event.priority.code} ${event.priority.displayName}',
               color: AppColors.agent,
             ),
             _buildTraceStep(
               stepName: 'ROUTED',
               timestamp: timeStr,
-              details: 'Priority Router queued to ${event.priority.displayName} buffer',
+              details:
+                  'Priority Router queued to ${event.priority.displayName} buffer',
               color: AppColors.warning,
             ),
             _buildTraceStep(
@@ -97,7 +104,8 @@ class EventTraceScreen extends StatelessWidget {
             _buildTraceStep(
               stepName: event.status.name.toUpperCase(),
               timestamp: timeStr,
-              details: 'Processed via ${event.strategy.name.toUpperCase()} strategy',
+              details:
+                  'Processed via ${event.strategy.name.toUpperCase()} strategy',
               color: AppColors.healthy,
               isLast: true,
             ),
@@ -116,15 +124,27 @@ class EventTraceScreen extends StatelessWidget {
                 children: [
                   const Text(
                     'LATENCY BREAKDOWN',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 18,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.spaceBetween,
                     children: [
-                      _buildMetricItem('End-to-End Latency', '${event.latencyMs.toInt()} ms', AppColors.textPrimary),
-                      _buildMetricItem('Queue Wait Time', '${event.queueTimeMs.toInt()} ms', AppColors.warning),
-                      _buildMetricItem('Worker Processing', '${event.processingTimeMs.toInt()} ms', AppColors.info),
+                      _buildMetricItem(
+                          'End-to-End Latency',
+                          '${event.latencyMs.toInt()} ms',
+                          AppColors.textPrimary),
+                      _buildMetricItem('Queue Wait Time',
+                          '${event.queueTimeMs.toInt()} ms', AppColors.warning),
+                      _buildMetricItem(
+                          'Worker Processing',
+                          '${event.processingTimeMs.toInt()} ms',
+                          AppColors.info),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -132,12 +152,18 @@ class EventTraceScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   const Text(
                     'DECISION REASON',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '"${event.decisionReason}"',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontStyle: FontStyle.italic),
+                    style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic),
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
@@ -146,11 +172,15 @@ class EventTraceScreen extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       icon: const Icon(Icons.psychology_rounded, size: 18),
-                      label: const Text('EXPLAIN THIS DECISION (AI / RULES)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
-                      onPressed: () => DecisionExplainDialog.show(context, event: event),
+                      label: const Text('EXPLAIN THIS DECISION (AI / RULES)',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 11)),
+                      onPressed: () =>
+                          DecisionExplainDialog.show(context, event: event),
                     ),
                   ),
                 ],
@@ -196,17 +226,27 @@ class EventTraceScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    stepName,
-                    style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      stepName,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                      softWrap: true,
+                    ),
                   ),
-                  Text(timestamp, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                  const SizedBox(width: 8),
+                  Text(timestamp,
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 10)),
                 ],
               ),
               const SizedBox(height: 2),
-              Text(details, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+              Text(details,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 11)),
               const SizedBox(height: 12),
             ],
           ),
@@ -219,9 +259,12 @@ class EventTraceScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+        Text(label,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
         const SizedBox(height: 2),
-        Text(val, style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(val,
+            style: TextStyle(
+                color: color, fontSize: 14, fontWeight: FontWeight.bold)),
       ],
     );
   }

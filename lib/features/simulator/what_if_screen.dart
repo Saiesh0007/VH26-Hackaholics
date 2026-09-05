@@ -12,6 +12,8 @@ class WhatIfScreen extends ConsumerStatefulWidget {
 }
 
 class _WhatIfScreenState extends ConsumerState<WhatIfScreen> {
+  static const double _usdToInrRate = 83.0;
+
   double _trafficRate = 20000;
   int _workers = 8;
   int _batchSize = 100;
@@ -50,6 +52,9 @@ class _WhatIfScreenState extends ConsumerState<WhatIfScreen> {
 
     final predicted = _simulationResult?['predicted'] as Map<String, dynamic>?;
     final explanation = _simulationResult?['explanation']?.toString();
+    final predictedCostUsd = predicted?['estimated_cost_per_hour'];
+    final predictedCostInr =
+        predictedCostUsd is num ? predictedCostUsd * _usdToInrRate : null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -86,8 +91,10 @@ class _WhatIfScreenState extends ConsumerState<WhatIfScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text(
                         'SIMULATION INPUT PARAMETERS',
@@ -117,8 +124,10 @@ class _WhatIfScreenState extends ConsumerState<WhatIfScreen> {
                   const SizedBox(height: 16),
 
                   // Traffic Rate Slider
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text('Projected Traffic Rate',
                           style: TextStyle(
@@ -146,8 +155,10 @@ class _WhatIfScreenState extends ConsumerState<WhatIfScreen> {
                   ),
 
                   // Worker Count Slider
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text('Worker Nodes',
                           style: TextStyle(
@@ -228,74 +239,52 @@ class _WhatIfScreenState extends ConsumerState<WhatIfScreen> {
                         color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: 560,
-                      child: Table(
-                        columnWidths: const {
-                          0: FlexColumnWidth(2.0),
-                          1: FlexColumnWidth(1.5),
-                          2: FlexColumnWidth(1.5),
-                        },
-                        children: [
-                          TableRow(
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceElevated,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            children: [
-                              _cellHeader('METRIC'),
-                              _cellHeader('CURRENT'),
-                              _cellHeader('PREDICTED'),
-                            ],
-                          ),
-                          _comparisonRow(
-                            'P0 Latency (Critical)',
-                            '${currentMetrics?.p0LatencyMs.toStringAsFixed(1) ?? "38.5"} ms',
-                            '${predicted?['p0_latency_ms'] ?? "--"} ms',
-                            highlight: true,
-                          ),
-                          _comparisonRow(
-                            'P1 Latency',
-                            '${currentMetrics?.p1LatencyMs.toStringAsFixed(1) ?? "54.0"} ms',
-                            '${predicted?['p1_latency_ms'] ?? "--"} ms',
-                          ),
-                          _comparisonRow(
-                            'P2 Latency',
-                            '${currentMetrics?.p2LatencyMs.toStringAsFixed(1) ?? "120.0"} ms',
-                            '${predicted?['p2_latency_ms'] ?? "--"} ms',
-                          ),
-                          _comparisonRow(
-                            'P3 Latency',
-                            '${currentMetrics?.p3LatencyMs.toStringAsFixed(1) ?? "350.0"} ms',
-                            '${predicted?['p3_latency_ms'] ?? "--"} ms',
-                          ),
-                          _comparisonRow(
-                            'Critical Events Lost',
-                            '${currentMetrics?.criticalEventsLost ?? 0}',
-                            '${predicted?['critical_dropped'] ?? 0} (0-Loss Guarantee)',
-                            highlight: true,
-                            isHealthy: true,
-                          ),
-                          _comparisonRow(
-                            'Deferred Rate',
-                            '${currentMetrics?.totalDeferredCount ?? 0}',
-                            '${predicted?['deferred_percent'] ?? "0.0"}%',
-                          ),
-                          _comparisonRow(
-                            'Shedding Rate',
-                            '${currentMetrics?.totalShedCount ?? 0}',
-                            '${predicted?['shed_percent'] ?? "0.0"}%',
-                          ),
-                          _comparisonRow(
-                            'Est. Cost / Hour',
-                            '\$3.60',
-                            '\$${predicted?['estimated_cost_per_hour'] ?? "0.00"}',
-                          ),
-                        ],
-                      ),
-                    ),
+                  _comparisonHeader(),
+                  const SizedBox(height: 8),
+                  _comparisonRow(
+                    'P0 Latency (Critical)',
+                    '${currentMetrics?.p0LatencyMs.toStringAsFixed(1) ?? "38.5"} ms',
+                    '${predicted?['p0_latency_ms'] ?? "--"} ms',
+                    highlight: true,
+                  ),
+                  _comparisonRow(
+                    'P1 Latency',
+                    '${currentMetrics?.p1LatencyMs.toStringAsFixed(1) ?? "54.0"} ms',
+                    '${predicted?['p1_latency_ms'] ?? "--"} ms',
+                  ),
+                  _comparisonRow(
+                    'P2 Latency',
+                    '${currentMetrics?.p2LatencyMs.toStringAsFixed(1) ?? "120.0"} ms',
+                    '${predicted?['p2_latency_ms'] ?? "--"} ms',
+                  ),
+                  _comparisonRow(
+                    'P3 Latency',
+                    '${currentMetrics?.p3LatencyMs.toStringAsFixed(1) ?? "350.0"} ms',
+                    '${predicted?['p3_latency_ms'] ?? "--"} ms',
+                  ),
+                  _comparisonRow(
+                    'Critical Events Lost',
+                    '${currentMetrics?.criticalEventsLost ?? 0}',
+                    '${predicted?['critical_dropped'] ?? 0} (0-Loss Guarantee)',
+                    highlight: true,
+                    isHealthy: true,
+                  ),
+                  _comparisonRow(
+                    'Deferred Rate',
+                    '${currentMetrics?.totalDeferredCount ?? 0}',
+                    '${predicted?['deferred_percent'] ?? "0.0"}%',
+                  ),
+                  _comparisonRow(
+                    'Shedding Rate',
+                    '${currentMetrics?.totalShedCount ?? 0}',
+                    '${predicted?['shed_percent'] ?? "0.0"}%',
+                  ),
+                  _comparisonRow(
+                    'Est. Cost / Hour (INR)',
+                    '₹${(3.60 * _usdToInrRate).toStringAsFixed(2)}',
+                    predictedCostInr == null
+                        ? '₹0.00'
+                        : '₹${predictedCostInr.toStringAsFixed(2)}',
                   ),
                 ],
               ),
@@ -334,59 +323,98 @@ class _WhatIfScreenState extends ConsumerState<WhatIfScreen> {
     );
   }
 
-  Widget _cellHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textMuted),
-      ),
-    );
-  }
-
-  TableRow _comparisonRow(String label, String current, String predicted,
-      {bool highlight = false, bool isHealthy = false}) {
-    return TableRow(
+  Widget _comparisonHeader() {
+    return const Row(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        Expanded(
+          flex: 2,
           child: Text(
-            label,
+            'METRIC',
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
-              color:
-                  highlight ? AppColors.textPrimary : AppColors.textSecondary,
-            ),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMuted),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        Expanded(
           child: Text(
-            current,
-            style:
-                const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            'CURRENT',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMuted),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        Expanded(
           child: Text(
-            predicted,
+            'PREDICTED',
+            textAlign: TextAlign.right,
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: isHealthy
-                  ? AppColors.healthy
-                  : (highlight
-                      ? AppColors.primaryLight
-                      : AppColors.textPrimary),
-            ),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMuted),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _comparisonRow(String label, String current, String predicted,
+      {bool highlight = false, bool isHealthy = false}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              softWrap: true,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+                color:
+                    highlight ? AppColors.textPrimary : AppColors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              current,
+              textAlign: TextAlign.right,
+              softWrap: true,
+              style:
+                  const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              predicted,
+              textAlign: TextAlign.right,
+              softWrap: true,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isHealthy
+                    ? AppColors.healthy
+                    : (highlight
+                        ? AppColors.primaryLight
+                        : AppColors.textPrimary),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

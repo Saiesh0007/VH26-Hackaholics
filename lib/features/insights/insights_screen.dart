@@ -178,7 +178,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                   ),
                   Text(
                     'Real-Time Observability & Per-Tier SLA Diagnostics',
-                    style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 10, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -211,10 +212,14 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -336,8 +341,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       const SizedBox(height: 12),
 
                       // Timeframe Filter Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           const Text(
                             'TIMEFRAME',
@@ -346,7 +353,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold),
                           ),
-                          Row(
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
                             children: _timeframes.map((tf) {
                               final isSelected = _selectedTimeframe == tf;
                               return InkWell(

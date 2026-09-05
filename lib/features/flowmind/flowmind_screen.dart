@@ -42,9 +42,11 @@ class FlowMindScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('FLOWMIND CONTROL CENTER',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   Text('Autonomous AI Pipeline Intelligence Engine',
-                      style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                      style: TextStyle(
+                          fontSize: 10, color: AppColors.textSecondary)),
                 ],
               ),
             ),
@@ -327,8 +329,10 @@ class FlowMindScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // Current Action & Rollback Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Text(
                       'ACTIVE POLICY ACTION',

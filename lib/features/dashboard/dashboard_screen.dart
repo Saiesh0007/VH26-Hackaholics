@@ -127,7 +127,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 21),
+            icon: const Icon(Icons.tune_rounded,
+                color: AppColors.primary, size: 21),
             tooltip: 'What-If Predictive Simulator',
             onPressed: () => Navigator.push(
               context,
@@ -188,8 +189,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -383,12 +386,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           );
                         }).toList(),
                       ),
-
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
-
 
                 // Section Title - Telemetry
                 const Row(
@@ -544,7 +545,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.hub_rounded, size: 15, color: AppColors.primaryLight),
+                  Icon(Icons.hub_rounded,
+                      size: 15, color: AppColors.primaryLight),
                   SizedBox(width: 6),
                   Text(
                     'ACTIVE PIPELINE DOMAIN',
@@ -561,25 +563,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CreatePipelineScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const CreatePipelineScreen()),
                   );
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    border:
+                        Border.all(color: AppColors.primary.withOpacity(0.3)),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.auto_awesome_rounded, size: 12, color: AppColors.primaryLight),
+                      Icon(Icons.auto_awesome_rounded,
+                          size: 12, color: AppColors.primaryLight),
                       SizedBox(width: 4),
                       Text(
                         'AI Architect',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primaryLight),
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryLight),
                       ),
                     ],
                   ),
@@ -593,7 +602,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Row(
               children: [
                 ...domainState.availablePolicies.map((p) {
-                  final isSelected = p.domainName.toLowerCase() == active.domainName.toLowerCase();
+                  final isSelected = p.domainName.toLowerCase() ==
+                      active.domainName.toLowerCase();
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
@@ -601,16 +611,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         p.domainName,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                          color: isSelected ? Colors.white : AppColors.textSecondary,
+                          fontWeight:
+                              isSelected ? FontWeight.w800 : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : AppColors.textSecondary,
                         ),
                       ),
                       selected: isSelected,
                       selectedColor: AppColors.primary,
                       backgroundColor: AppColors.surfaceElevated,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       side: BorderSide(
-                        color: isSelected ? AppColors.primary : AppColors.cardBorder,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.cardBorder,
                       ),
                       onSelected: (_) {
                         ref.read(domainProvider.notifier).switchDomain(p);
@@ -619,15 +635,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   );
                 }),
                 ActionChip(
-                  avatar: const Icon(Icons.add_rounded, size: 14, color: AppColors.primaryLight),
-                  label: const Text('+ Create Domain', style: TextStyle(fontSize: 11, color: AppColors.primaryLight, fontWeight: FontWeight.w700)),
+                  avatar: const Icon(Icons.add_rounded,
+                      size: 14, color: AppColors.primaryLight),
+                  label: const Text('+ Create Domain',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.primaryLight,
+                          fontWeight: FontWeight.w700)),
                   backgroundColor: AppColors.surfaceElevated,
                   side: const BorderSide(color: AppColors.primary, width: 0.8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const CreatePipelineScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const CreatePipelineScreen()),
                     );
                   },
                 ),
@@ -643,12 +666,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.shield_rounded, size: 14, color: AppColors.healthy),
+                const Icon(Icons.shield_rounded,
+                    size: 14, color: AppColors.healthy),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     '${active.domainName}: ${active.eventTypes.length} event tiers | 0 critical event loss guarantee active',
-                    style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 10.5, color: AppColors.textSecondary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -659,5 +684,4 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
-
 }

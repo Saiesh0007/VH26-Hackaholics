@@ -101,8 +101,12 @@ class SettingsScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: ChoiceChip(
-                        label: const Text('LOCAL MOCK SIMULATION',
-                            style: TextStyle(fontSize: 10)),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('LOCAL MOCK SIMULATION',
+                              style: TextStyle(fontSize: 10)),
+                        ),
                         selected: settings.dataSource == DataSourceMode.mock,
                         onSelected: (_) =>
                             notifier.toggleDataSource(DataSourceMode.mock),
@@ -112,8 +116,12 @@ class SettingsScreen extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ChoiceChip(
-                        label: const Text('FASTAPI BACKEND API',
-                            style: TextStyle(fontSize: 10)),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('FASTAPI BACKEND API',
+                              style: TextStyle(fontSize: 10)),
+                        ),
                         selected: settings.dataSource == DataSourceMode.api,
                         onSelected: (_) =>
                             notifier.toggleDataSource(DataSourceMode.api),
@@ -137,13 +145,16 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 6),
                 TextFormField(
                   initialValue: settings.backendUrl,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'http://192.168.137.115:8000/api/v1',
-                    hintStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    hintStyle: const TextStyle(
+                        fontSize: 11, color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.surfaceElevated,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -160,14 +171,20 @@ class SettingsScreen extends ConsumerWidget {
                   spacing: 6,
                   children: [
                     ActionChip(
-                      label: const Text('Wi-Fi (192.168.137.115)', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                      label: const Text('Wi-Fi (192.168.137.115)',
+                          style: TextStyle(
+                              fontSize: 9, color: AppColors.textSecondary)),
                       backgroundColor: AppColors.surfaceElevated,
-                      onPressed: () => notifier.setBackendUrl('http://192.168.137.115:8000/api/v1'),
+                      onPressed: () => notifier
+                          .setBackendUrl('http://192.168.137.115:8000/api/v1'),
                     ),
                     ActionChip(
-                      label: const Text('USB / Localhost', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                      label: const Text('USB / Localhost',
+                          style: TextStyle(
+                              fontSize: 9, color: AppColors.textSecondary)),
                       backgroundColor: AppColors.surfaceElevated,
-                      onPressed: () => notifier.setBackendUrl('http://localhost:8000/api/v1'),
+                      onPressed: () => notifier
+                          .setBackendUrl('http://localhost:8000/api/v1'),
                     ),
                   ],
                 ),
