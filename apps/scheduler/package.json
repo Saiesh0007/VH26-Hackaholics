@@ -1,1 +1,1 @@
-{"name":"@eventflow/scheduler","version":"1.0.0","main":"dist/index.js","scripts":{"build":"tsc","start":"node dist/index.js"},"dependencies":{"kafkajs":"^2.2.4","@eventflow/event-schema":"1.0.0","dotenv":"^16.4.5"},"devDependencies":{"@types/node":"^20.0.0"}}
+{"name":"@eventflow/scheduler","version":"1.0.0","main":"dist/index.js","scripts":{"build":"tsc","start":"node dist/index.js"},"dependencies":{"@eventflow/event-schema":"1.0.0","@fastify/cors":"^11.3.0","dotenv":"^16.4.5","fastify":"^5.12.3","kafkajs":"^2.2.4"},"devDependencies":{"@types/node":"^20.0.0"}}
