@@ -139,7 +139,7 @@ class SettingsScreen extends ConsumerWidget {
                   initialValue: settings.backendUrl,
                   style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'http://192.168.137.156:8000/api/v1',
+                    hintText: 'http://192.168.137.115:8000/api/v1',
                     hintStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.surfaceElevated,
@@ -160,9 +160,9 @@ class SettingsScreen extends ConsumerWidget {
                   spacing: 6,
                   children: [
                     ActionChip(
-                      label: const Text('Wi-Fi (192.168.137.156)', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+                      label: const Text('Wi-Fi (192.168.137.115)', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
                       backgroundColor: AppColors.surfaceElevated,
-                      onPressed: () => notifier.setBackendUrl('http://192.168.137.156:8000/api/v1'),
+                      onPressed: () => notifier.setBackendUrl('http://192.168.137.115:8000/api/v1'),
                     ),
                     ActionChip(
                       label: const Text('USB / Localhost', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),

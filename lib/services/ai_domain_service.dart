@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../models/domain_policy.dart';
 import '../core/constraints/policy_validator.dart';
@@ -9,7 +8,7 @@ class AiDomainService {
 
   AiDomainService({
     Dio? dio,
-    this.baseUrl = 'http://localhost:8000/api/v1',
+    this.baseUrl = 'http://192.168.137.115:8000/api/v1',
   }) : dio = dio ??
             Dio(BaseOptions(
               connectTimeout: const Duration(seconds: 12),
@@ -142,10 +141,27 @@ class AiDomainService {
         ),
       ],
       priorityTiers: [
-        const PriorityTier(code: 'P0', name: 'Critical Emergency', description: 'Immediate stream', targetSlaMs: 150),
-        const PriorityTier(code: 'P1', name: 'Operational', description: 'High priority', targetSlaMs: 1500),
-        const PriorityTier(code: 'P2', name: 'Standard', description: 'Micro-batchable', targetSlaMs: 5000),
-        const PriorityTier(code: 'P3', name: 'Telemetry', description: 'Bulk batchable', targetSlaMs: 30000, allowShedding: true),
+        const PriorityTier(
+            code: 'P0',
+            name: 'Critical Emergency',
+            description: 'Immediate stream',
+            targetSlaMs: 150),
+        const PriorityTier(
+            code: 'P1',
+            name: 'Operational',
+            description: 'High priority',
+            targetSlaMs: 1500),
+        const PriorityTier(
+            code: 'P2',
+            name: 'Standard',
+            description: 'Micro-batchable',
+            targetSlaMs: 5000),
+        const PriorityTier(
+            code: 'P3',
+            name: 'Telemetry',
+            description: 'Bulk batchable',
+            targetSlaMs: 30000,
+            allowShedding: true),
       ],
       globalSettings: const GlobalPolicySettings(
         maxQueueCapacity: 10000,
@@ -170,8 +186,14 @@ class AiDomainService {
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data as Map<String, dynamic>;
         final isValid = data['is_valid'] as bool? ?? true;
-        final errors = (data['errors'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-        final warnings = (data['warnings'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+        final errors = (data['errors'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+        final warnings = (data['warnings'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
         return PolicyValidationResult(
           isValid: isValid,
           errors: errors,
@@ -217,10 +239,14 @@ class AiDomainService {
     Map<String, dynamic> metrics,
   ) {
     final lower = prompt.toLowerCase();
-    final queueDepth = metrics['total_queued_events'] ?? metrics['queue_depth'] ?? 0;
-    final trafficRate = metrics['events_per_minute'] ?? metrics['traffic_rate'] ?? 1000;
-    final workerCount = metrics['active_workers'] ?? metrics['worker_count'] ?? 8;
-    final workerLoad = ((metrics['worker_utilization'] ?? 0.5) * 100).toStringAsFixed(1);
+    final queueDepth =
+        metrics['total_queued_events'] ?? metrics['queue_depth'] ?? 0;
+    final trafficRate =
+        metrics['events_per_minute'] ?? metrics['traffic_rate'] ?? 1000;
+    final workerCount =
+        metrics['active_workers'] ?? metrics['worker_count'] ?? 8;
+    final workerLoad =
+        ((metrics['worker_utilization'] ?? 0.5) * 100).toStringAsFixed(1);
     final droppedCount = metrics['critical_events_dropped'] ?? 0;
 
     String facts;
@@ -228,31 +254,54 @@ class AiDomainService {
     String policyInfo;
     String recommendation;
 
-    if (lower.contains('batch') || lower.contains('micro-batch') || lower.contains('click')) {
-      facts = 'AdaptQ switches non-critical events from stream to micro-batch when queue depth exceeds safety thresholds.';
-      currentMetrics = 'Traffic is $trafficRate e/min. Queue depth is $queueDepth. Worker load is $workerLoad%.';
-      policyInfo = 'Active domain "${policy.domainName}" configures batchable events for P2/P3 tiers while guaranteeing stream processing for P0 critical events.';
-      recommendation = 'Maintain micro-batching for lower priority telemetry to prevent latency degradation on critical events.';
+    if (lower.contains('batch') ||
+        lower.contains('micro-batch') ||
+        lower.contains('click')) {
+      facts =
+          'AdaptQ switches non-critical events from stream to micro-batch when queue depth exceeds safety thresholds.';
+      currentMetrics =
+          'Traffic is $trafficRate e/min. Queue depth is $queueDepth. Worker load is $workerLoad%.';
+      policyInfo =
+          'Active domain "${policy.domainName}" configures batchable events for P2/P3 tiers while guaranteeing stream processing for P0 critical events.';
+      recommendation =
+          'Maintain micro-batching for lower priority telemetry to prevent latency degradation on critical events.';
     } else if (lower.contains('defer') || lower.contains('delay')) {
-      facts = 'Event deferral buffers tolerant events in memory when queue pressure exceeds backpressure limits.';
-      currentMetrics = 'System currently running $workerCount workers under $trafficRate e/min rate.';
-      policyInfo = 'Events with canDefer=true and SLA > 5000ms are scheduled for deferred processing during peak intervals.';
-      recommendation = 'Once traffic falls below 5,000 e/min, deferred queues will be drained automatically without data loss.';
-    } else if (lower.contains('shed') || lower.contains('drop') || lower.contains('log')) {
-      facts = 'Shedding drops only explicitly designated low-priority non-critical events to protect system stability.';
-      currentMetrics = 'Critical events dropped: $droppedCount (Zero tolerance). Total queue depth: $queueDepth.';
-      policyInfo = 'Policy strictly dictates: critical=true events have canShed=false and are NEVER shed.';
-      recommendation = 'Allow shedding on volatile telemetry during 20x spikes to protect SLA for life-critical/revenue-critical transactions.';
+      facts =
+          'Event deferral buffers tolerant events in memory when queue pressure exceeds backpressure limits.';
+      currentMetrics =
+          'System currently running $workerCount workers under $trafficRate e/min rate.';
+      policyInfo =
+          'Events with canDefer=true and SLA > 5000ms are scheduled for deferred processing during peak intervals.';
+      recommendation =
+          'Once traffic falls below 5,000 e/min, deferred queues will be drained automatically without data loss.';
+    } else if (lower.contains('shed') ||
+        lower.contains('drop') ||
+        lower.contains('log')) {
+      facts =
+          'Shedding drops only explicitly designated low-priority non-critical events to protect system stability.';
+      currentMetrics =
+          'Critical events dropped: $droppedCount (Zero tolerance). Total queue depth: $queueDepth.';
+      policyInfo =
+          'Policy strictly dictates: critical=true events have canShed=false and are NEVER shed.';
+      recommendation =
+          'Allow shedding on volatile telemetry during 20x spikes to protect SLA for life-critical/revenue-critical transactions.';
     } else if (lower.contains('scale') || lower.contains('worker')) {
-      facts = 'Dynamic worker autoscaling adjusts concurrency based on queue velocity and SLA time-to-expiry.';
-      currentMetrics = 'Current worker count: $workerCount. Worker utilization: $workerLoad%.';
-      policyInfo = 'Global settings allow max queue capacity of ${policy.globalSettings.maxQueueCapacity} and baseline ${policy.globalSettings.baselineTrafficRate} e/min.';
+      facts =
+          'Dynamic worker autoscaling adjusts concurrency based on queue velocity and SLA time-to-expiry.';
+      currentMetrics =
+          'Current worker count: $workerCount. Worker utilization: $workerLoad%.';
+      policyInfo =
+          'Global settings allow max queue capacity of ${policy.globalSettings.maxQueueCapacity} and baseline ${policy.globalSettings.baselineTrafficRate} e/min.';
       recommendation = 'Worker allocation is optimal for current ingress rate.';
     } else {
-      facts = 'AdaptQ separates control plane policy intelligence from the high-throughput deterministic data plane.';
-      currentMetrics = 'Throughput: $trafficRate e/min. Queue depth: $queueDepth. Active workers: $workerCount.';
-      policyInfo = 'Active policy "${policy.domainName}" covers ${policy.eventTypes.length} distinct event types.';
-      recommendation = 'Use Chaos controls to test 20x spikes and observe real-time priority adaptations.';
+      facts =
+          'AdaptQ separates control plane policy intelligence from the high-throughput deterministic data plane.';
+      currentMetrics =
+          'Throughput: $trafficRate e/min. Queue depth: $queueDepth. Active workers: $workerCount.';
+      policyInfo =
+          'Active policy "${policy.domainName}" covers ${policy.eventTypes.length} distinct event types.';
+      recommendation =
+          'Use Chaos controls to test 20x spikes and observe real-time priority adaptations.';
     }
 
     return {
@@ -293,23 +342,29 @@ class AiDomainService {
     final action = decision['action']?.toString() ?? 'STREAM';
     final slaMs = event['sla_ms'] ?? 1000;
     final queueDepth = metrics['total_queued_events'] ?? 2450;
-    final workerLoad = ((metrics['worker_utilization'] ?? 0.65) * 100).toStringAsFixed(0);
+    final workerLoad =
+        ((metrics['worker_utilization'] ?? 0.65) * 100).toStringAsFixed(0);
 
     final reasons = <String>[];
     if (isCritical) {
       reasons.add('Critical event guarantee enforced by policy');
       reasons.add('Shedding and deferral strictly prohibited for $priority');
-      reasons.add('Target SLA is ${slaMs}ms; stream execution minimizes queuing delay');
+      reasons.add(
+          'Target SLA is ${slaMs}ms; stream execution minimizes queuing delay');
     } else {
       reasons.add('Non-critical event category ($priority)');
       if (action.toUpperCase().contains('BATCH')) {
-        reasons.add('Queue pressure high ($queueDepth events); micro-batching improves throughput');
+        reasons.add(
+            'Queue pressure high ($queueDepth events); micro-batching improves throughput');
         reasons.add('SLA allows latency buffer (${slaMs}ms remaining)');
       } else if (action.toUpperCase().contains('SHED')) {
-        reasons.add('Queue overflow threshold exceeded; policy allows shedding for this tier');
-        reasons.add('Shedding active to preserve compute bandwidth for P0 critical streams');
+        reasons.add(
+            'Queue overflow threshold exceeded; policy allows shedding for this tier');
+        reasons.add(
+            'Shedding active to preserve compute bandwidth for P0 critical streams');
       } else {
-        reasons.add('Current worker load ($workerLoad%) allows direct processing');
+        reasons
+            .add('Current worker load ($workerLoad%) allows direct processing');
       }
     }
 
@@ -355,7 +410,8 @@ class AiDomainService {
     final workerCap = workers * 2500.0;
     final pressureRatio = trafficRate / (workerCap > 0 ? workerCap : 1.0);
 
-    double p0Lat = 45.0 + (pressureRatio > 1.0 ? (pressureRatio - 1.0) * 80.0 : 0.0);
+    double p0Lat =
+        45.0 + (pressureRatio > 1.0 ? (pressureRatio - 1.0) * 80.0 : 0.0);
     p0Lat = p0Lat > 250.0 ? 250.0 : p0Lat;
 
     double p1Lat = 180.0 * (1.0 + pressureRatio * 0.8);
@@ -385,7 +441,8 @@ class AiDomainService {
         'worker_utilization': (pressureRatio * 0.7).clamp(0.1, 1.0),
         'throughput_events_per_min': throughput,
       },
-      'explanation': 'Deterministic simulation: AdaptQ maintains 0 critical drops by batching P2 and shedding P3 under high pressure.',
+      'explanation':
+          'Deterministic simulation: AdaptQ maintains 0 critical drops by batching P2 and shedding P3 under high pressure.',
     };
   }
 }

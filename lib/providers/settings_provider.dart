@@ -14,7 +14,7 @@ class AppSettings {
 
   const AppSettings({
     required this.dataSource,
-    this.backendUrl = 'http://192.168.137.156:8000/api/v1',
+    this.backendUrl = 'http://192.168.137.115:8000/api/v1',
     required this.hapticsEnabled,
     required this.audioAlertsEnabled,
     required this.animationsEnabled,
@@ -41,7 +41,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   SettingsNotifier()
       : super(const AppSettings(
           dataSource: DataSourceMode.mock,
-          backendUrl: 'http://192.168.137.156:8000/api/v1',
+          backendUrl: 'http://192.168.137.115:8000/api/v1',
           hapticsEnabled: true,
           audioAlertsEnabled: true,
           animationsEnabled: true,

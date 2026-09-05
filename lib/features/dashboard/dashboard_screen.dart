@@ -5,16 +5,11 @@ import '../../providers/flowmind_provider.dart';
 import '../../providers/pipeline_provider.dart';
 import '../../widgets/metric_card.dart';
 import '../../widgets/queue_card.dart';
-import '../../widgets/critical_shield.dart';
 import '../../widgets/agent_status_indicator.dart';
 import '../../widgets/pressure_gauge.dart';
 import '../../widgets/animated_counter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/domain_provider.dart';
-import '../../models/domain_policy.dart';
-import '../../widgets/decision_explain_dialog.dart';
-import '../../widgets/replay_spike_dialog.dart';
-import '../copilot/ai_copilot_sheet.dart';
 import '../domain/create_pipeline_screen.dart';
 import '../simulator/what_if_screen.dart';
 
@@ -132,22 +127,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.psychology_rounded, color: AppColors.primaryLight, size: 21),
-            tooltip: 'AI Copilot',
-            onPressed: () => AiCopilotSheet.show(context),
-          ),
-          IconButton(
             icon: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 21),
             tooltip: 'What-If Predictive Simulator',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const WhatIfScreen()),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.history_toggle_off_rounded, color: AppColors.textSecondary, size: 21),
-            tooltip: '20× Replay Benchmark',
-            onPressed: () => ReplaySpikeDialog.show(context),
           ),
           const SizedBox(width: 4),
         ],
@@ -399,147 +384,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         }).toList(),
                       ),
 
-                      const SizedBox(height: 16),
-                      const Text(
-                        'CHAOS & ADAPTIVE STRESS SUITE',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Chaos buttons grid/wrap
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _chaosChip(
-                            label: '1× Normal',
-                            icon: Icons.check_circle_outline_rounded,
-                            color: AppColors.healthy,
-                            onTap: () {
-                              ref.read(pipelineRepositoryProvider).recover();
-                            },
-                          ),
-                          _chaosChip(
-                            label: '2× Load',
-                            icon: Icons.trending_up_rounded,
-                            color: AppColors.primary,
-                            onTap: () {
-                              ref.read(pipelineRepositoryProvider).setTrafficRate(2000);
-                            },
-                          ),
-                          _chaosChip(
-                            label: '5× Surge',
-                            icon: Icons.speed_rounded,
-                            color: AppColors.warning,
-                            onTap: () {
-                              ref.read(pipelineRepositoryProvider).setTrafficRate(5000);
-                            },
-                          ),
-                          _chaosChip(
-                            label: '🚨 20× SPIKE',
-                            icon: Icons.bolt_rounded,
-                            color: AppColors.critical,
-                            isBold: true,
-                            onTap: () {
-                              ref.read(simulationEngineProvider).trigger20xSpike();
-                            },
-                          ),
-                          _chaosChip(
-                            label: '💥 Kill Worker',
-                            icon: Icons.cloud_off_rounded,
-                            color: AppColors.critical,
-                            onTap: () {
-                              ref.read(simulationEngineProvider).killWorker();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Chaos Injected: Worker terminated. Concurrency reduced by 50%.'),
-                                  backgroundColor: AppColors.critical,
-                                ),
-                              );
-                            },
-                          ),
-                          _chaosChip(
-                            label: '🔄 Duplicate',
-                            icon: Icons.copy_rounded,
-                            color: AppColors.primaryLight,
-                            onTap: () {
-                              ref.read(simulationEngineProvider).injectDuplicate();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Chaos Injected: Duplicate event signature filtered by idempotency guard.'),
-                                  backgroundColor: AppColors.primary,
-                                ),
-                              );
-                            },
-                          ),
-                          _chaosChip(
-                            label: '⚠️ Backpressure',
-                            icon: Icons.compress_rounded,
-                            color: AppColors.warning,
-                            onTap: () {
-                              ref.read(simulationEngineProvider).injectQueuePressure();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Chaos Injected: Artificial backpressure spike added to queue.'),
-                                  backgroundColor: AppColors.warning,
-                                ),
-                              );
-                            },
-                          ),
-                          _chaosChip(
-                            label: '⚡ 100k Stress',
-                            icon: Icons.warning_amber_rounded,
-                            color: AppColors.critical,
-                            onTap: () {
-                              ref.read(pipelineRepositoryProvider).setTrafficRate(100000);
-                            },
-                          ),
-                        ],
-                      ),
-
-                      if (isSpike) ...[
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 38,
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.healthy,
-                              side: const BorderSide(
-                                  color: AppColors.healthy, width: 1.0),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: AppColors.pillRadius),
-                            ),
-                            icon: const Icon(Icons.refresh_rounded, size: 16),
-                            label: const Text(
-                              'RESET TO 1,000 BASELINE',
-                              style: TextStyle(
-                                  fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: () {
-                              ref.read(pipelineRepositoryProvider).recover();
-                            },
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
 
-                // Critical Event Shield HUD
-                CriticalShield(
-                  isExtremeSpike: isSpike,
-                  criticalLost: metrics.criticalEventsLost,
-                  deferredCount: metrics.totalDeferredCount,
-                  shedCount: metrics.totalShedCount,
-                ),
-                const SizedBox(height: 16),
 
                 // Section Title - Telemetry
                 const Row(
@@ -671,13 +520,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         error: (err, __) => Center(
             child: Text('Error: $err',
                 style: const TextStyle(color: AppColors.critical))),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.psychology_rounded, size: 20),
-        label: const Text('AI Copilot', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-        onPressed: () => AiCopilotSheet.show(context),
       ),
     );
   }
@@ -818,39 +660,4 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _chaosChip({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-    bool isBold = false,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 13, color: color),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
