@@ -18,7 +18,7 @@ from jugaadflow.pipeline.queues import create_queues
 from jugaadflow.pipeline.classifier import classifier_loop
 from jugaadflow.pipeline.dedup import DedupFilter, dedup_purge_loop
 from jugaadflow.pipeline.strategy import Strategy
-from jugaadflow.pipeline.worker import worker, completed_events_cleanup
+from jugaadflow.pipeline.worker import worker, completed_events_cleanup, kafka_consumer_loop
 from jugaadflow.pipeline.decision_engine import feedback_loop
 from jugaadflow.pipeline.thresholds import Thresholds
 from jugaadflow.metrics.store import Metrics
@@ -66,6 +66,7 @@ async def main():
             worker(i, queues, strategy, metrics, completed_events, worker_kill_flags, dead_letter)
         ))
     tasks.append(asyncio.create_task(completed_events_cleanup(completed_events, ttl=60.0, interval=10.0)))
+    tasks.append(asyncio.create_task(kafka_consumer_loop(queues, strategy, interval=0.5)))
 
     tasks.append(asyncio.create_task(feedback_loop(queues, strategy, metrics, thresholds, interval=3.0)))
     tasks.append(asyncio.create_task(metrics_broadcaster(queues, strategy, metrics, rate_multiplier, app, interval=1.0)))

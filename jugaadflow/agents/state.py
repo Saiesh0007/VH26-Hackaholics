@@ -56,6 +56,7 @@ def capture_snapshot(metrics, queues) -> MetricsSnapshot:
             "deferred_tier2": queues.deferred_tier2.qsize(),
             "deferred_tier3": queues.deferred_tier3.qsize(),
             "input": queues.input_queue.qsize(),
+            "kafka": queues.kafka_overflow.qsize(),
         },
         current_level=metrics.current_level,
         level_transitions=len(metrics.recent_decisions),

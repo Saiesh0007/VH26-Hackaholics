@@ -348,6 +348,7 @@ function Admin() {
         <Stat label="Events / sec"        value={evtSec}                                sub="Processing rate" />
         <Stat label="Queue depth"         value={queueDepth.toLocaleString()}           sub="Across all tiers" />
         <Stat label="Critical events lost" value={critLost}                             sub="P0 invariant holding" critical />
+        <Stat label="Kafka Overflow"      value={(data.queues.kafka || 0).toLocaleString()} sub="Durable disk buffer" />
       </div>
 
       <div style={{ marginTop: 24, display: 'grid', gap: 24, gridTemplateColumns: '1.4fr 1fr' }}>
@@ -421,7 +422,7 @@ function Admin() {
       <div style={{ marginTop: 24, display: 'grid', gap: 16, gridTemplateColumns: 'repeat(4, 1fr)' }}>
         <Stat label="Deferred events"  value={deferred.toLocaleString()}   sub="P1/P2 under load" />
         <Stat label="Batched events"   value={batched.toLocaleString()}    sub="Efficiently grouped" />
-        <Stat label="Shed events"      value={shed.toLocaleString()}       sub="Non-critical only" />
+        <Stat label="Shed events"      value={shed.toLocaleString()}       sub="Overflowed to Kafka" />
         <Stat label="Duplicates caught" value={duplicates.toLocaleString()} sub="Dedup filter (30s TTL)" />
       </div>
 

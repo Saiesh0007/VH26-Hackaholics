@@ -12,6 +12,7 @@ class Queues:
     deferred_tier2: asyncio.Queue
     deferred_tier3: asyncio.Queue
     fifo: asyncio.Queue
+    kafka_overflow: asyncio.Queue
 
     def tier(self, priority: int) -> asyncio.Queue:
         return {1: self.tier1, 2: self.tier2, 3: self.tier3, 4: self.tier4}[priority]
@@ -30,4 +31,5 @@ def create_queues() -> Queues:
         deferred_tier2=asyncio.Queue(maxsize=3000),
         deferred_tier3=asyncio.Queue(maxsize=2000),
         fifo=asyncio.Queue(maxsize=0),
+        kafka_overflow=asyncio.Queue(maxsize=0),
     )

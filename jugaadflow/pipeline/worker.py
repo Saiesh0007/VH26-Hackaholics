@@ -148,6 +148,10 @@ async def worker(
                 else:
                     if not (random.random() < strategy.shed_sample_rate):
                         metrics.shed_count[event.type] += 1
+                        try:
+                            queues.kafka_overflow.put_nowait(event)
+                        except asyncio.QueueFull:
+                            pass
                         event = None
             elif strategy.tier4 == "batch":
                 await process_batch(queues.tier4, strategy.batch_sizes["tier4"], metrics, completed_events)
@@ -182,3 +186,28 @@ async def completed_events_cleanup(completed_events: dict, ttl: float = 60.0, in
         expired = [eid for eid, ts in completed_events.items() if (now - ts) >= ttl]
         for eid in expired:
             del completed_events[eid]
+
+
+async def kafka_consumer_loop(queues: Queues, strategy: Strategy, interval: float = 0.5):
+    """
+    Background loop that drains the simulated Kafka overflow queue 
+    when the system is healthy enough to handle it.
+    """
+    while True:
+        await asyncio.sleep(interval)
+        if queues.kafka_overflow.empty():
+            continue
+            
+        # Only re-inject overflowed events if we are at normal or elevated levels
+        # and the input queue has some breathing room
+        if strategy.level <= 1 and queues.input_queue.qsize() < 2000:
+            batch_size = min(100, queues.kafka_overflow.qsize())
+            for _ in range(batch_size):
+                try:
+                    event = queues.kafka_overflow.get_nowait()
+                    # Re-inject back to input queue to let the dispatcher route it properly
+                    # This simulates a Kafka consumer reading from the topic and pushing it to the app
+                    queues.input_queue.put_nowait(event)
+                except (asyncio.QueueEmpty, asyncio.QueueFull):
+                    break
+
